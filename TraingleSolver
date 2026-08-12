@@ -1,0 +1,83 @@
+import math
+
+numberOfSides = 0
+numberOfAngles = 0
+
+print("Welcome to the triangle solver! This program will help you solve a triangle given the sides and angles. Please enter the lengths of the sides and the measures of the angles in degrees. If any values are unknown leave type 0")
+
+AB = int(input("What is AB? If not called AB type first side: "))
+BC = int(input("What is BC? If not called BC type second side: "))
+AC = int(input("What is AC? If not called AC type third side: "))
+
+a = int(input("What is the angle opposite to side BC? Or whatever you put as BC?"))
+b = int(input("What is the angle opposite to side AC? Or whatever you put as AC?"))
+c = int(input("What is the angle opposite to side AB? Or whatever you put as AB?"))
+
+if AB != 0:
+    NumberOfSides = numberOfSides + 1
+    ValidSide1 = AB
+    CorrespondingAngle1 = c
+if BC != 0 and AB == 0:
+    NumberOfSides = numberOfSides + 1
+    ValidSide1 = BC
+    CorrespondingAngle1 = a
+    InvalidSide1 = AB
+    InvalidCorrespondingAngle1 = c
+
+if BC != 0 and AB != 0:
+    NumberOfSides = numberOfSides + 1
+    ValidSide2 = BC
+    CorrespondingAngle2 = a
+    CorrespondingAngle1 = c
+    InvalidSide1 = AC
+
+if AC != 0 and BC == 0:
+    NumberOfSides = numberOfSides + 1
+    ValidSide2 = AC
+    CorrespondingAngle2 = b
+    InvalidSide2 = BC
+
+if AC != 0 and AB == 0:
+    NumberOfSides = numberOfSides + 1
+    ValidSide2 = AC
+    CorrespondingAngle2 = b
+    InvalidSide2 = AB
+
+if AC == 0 and BC != 0 and AB != 0:
+    NumberOfSides = numberOfSides + 1
+    ValidSide1 = AB
+    ValidSide2 = BC
+    InvalidSide1 = AC
+    InvalidCorrespondingAngle1 = b
+
+
+if a != 0:
+    NumberOfAngles = numberOfAngles + 1
+    ValidAngle1 = a
+if b != 0 and a == 0:
+    NumberOfAngles = numberOfAngles + 1
+    ValidAngle1 = b
+if b != 0 and a != 0:
+    NumberOfAngles = numberOfAngles + 1
+    ValidAngle2 = b
+
+if c != 0 and a == 0 or b == 0:
+    NumberOfAngles = numberOfAngles + 1
+    ValidAngle2 = c
+
+
+# if InvalidSide1 == AB:
+   # solution = int(ValidSide1)*math.sin(int(c)
+   #                                     )/math.sin(int(ValidAngle1))
+    # print(f"The length of side AB is {solution}")
+
+# if InvalidSide1 == BC:
+   # solution = int(ValidSide1)*math.sin(int(a)
+  #                                      )/math.sin(int(ValidAngle1))
+    # print(f"The length of side BC is {solution}")
+
+if InvalidSide1 == AC:
+    solution = ValidSide1 * \
+        math.sin(math.radians(InvalidCorrespondingAngle1)) / \
+        math.sin(math.radians(CorrespondingAngle1))
+    print(f"The length of side AC is {solution}")
