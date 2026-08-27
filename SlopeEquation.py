@@ -1,71 +1,98 @@
 import random
 import streamlit as st
-neglect = st.selectbox("What do you want to calculate?",
-                       ("Friction", "Velocity At End", "Slope Length", "Velocity at Start", "Height"))
 
-mass = random.randint(10, 20)
-speedA = random.randint(0, 10)
-height = random.randint(2, 12)
-slopelenght = random.randint(30, 100)
-friction = round(random.uniform(3, 10), 2)
+# Page Configuration
+st.set_page_config(page_title="Physics Practice Generator",
+                   page_icon="⚡", layout="centered")
 
-EmA = (mass * 9.8 * height) + (0.5 * mass * speedA**2)
-speedB1 = EmA - friction * slopelenght
-speedB2 = speedB1 / (0.5 * mass)
-speedB3 = round(speedB2**0.5, 2)
+st.title("⚡ Physics Problem Generator")
+st.caption("Work-Energy Theorem & Conservation of Energy Practice Problems")
 
-if neglect == "Friction" and st.button("Run"):
-    st.write(f"Mass is : {mass} kg")
-    st.write(f"Speed at A is : {speedA} m/s")
-    st.write(f"Height is : {height} m")
-    st.write(f"Slope Length is : {slopelenght} m")
-    st.write(f"Speed at B is : {speedB3} m/s")
-    st.write("Find Friction")
+# 1. State Management (persists random values across button clicks)
+if "problem_data" not in st.session_state:
+    st.session_state.problem_data = None
 
 
-if neglect == "Velocity At End" and st.button("Run"):
-    st.write(f"Mass is : {mass} kg")
-    st.write(f"Speed at A is : {speedA} m/s")
-    st.write(f"Height is : {height} m")
-    st.write(f"Slope Length is : {slopelenght} m")
-    st.write(f"Friction is : {friction} N")
-    st.write("Find Speed at B")
+def generate_valid_problem():
+    """Generates random variables ensuring non-negative kinetic energy at B."""
+    while True:
+        mass = random.randint(10, 20)
+        speedA = random.randint(0, 10)
+        height = random.randint(2, 12)
+        slopelength = random.randint(30, 100)
+        friction = round(random.uniform(3, 10), 2)
+
+        # Work-Energy Balance: EmA - (Friction * Distance) = EmB
+        EmA = (mass * 9.8 * height) + (0.5 * mass * speedA**2)
+        work_friction = friction * slopelength
+
+        if EmA > work_friction:
+            speedB = round(((EmA - work_friction) / (0.5 * mass)) ** 0.5, 2)
+            return {
+                "mass": mass,
+                "speedA": speedA,
+                "height": height,
+                "slopelength": slopelength,
+                "friction": friction,
+                "speedB": speedB,
+            }
 
 
-if neglect == "Slope Length" and st.button("Run"):
-    st.write(f"Mass is : {mass} kg")
-    st.write(f"Speed at A is : {speedA} m/s")
-    st.write(f"Height is : {height} m")
-    st.write(f"Friction is : {friction} N")
-    st.write(f"Speed at B is : {speedB3} m/s")
-    st.write("Find Slope Length")
+# 2. Sidebar Controls
+with st.sidebar:
+    st.header("Controls")
+    target_var = st.selectbox(
+        "Variable to Solve For:",
+        ["Friction", "Velocity At End", "Slope Length",
+            "Velocity at Start", "Height"],
+    )
 
+    if st.button("🎲 Generate New Problem", use_container_width=True, type="primary"):
+        st.session_state.problem_data = generate_valid_problem()
 
-if neglect == "Velocity at Start" and st.button("Run"):
-    st.write(f"Mass is : {mass} kg")
-    st.write(f"Height is : {height} m")
-    st.write(f"Slope Length is : {slopelenght} m")
-    st.write(f"Friction is : {friction} N")
-    st.write(f"Speed at B is : {speedB3} m/s")
-    st.write("Find Speed at A")
+# Generate initial problem if none exists
+if st.session_state.problem_data is None:
+    st.session_state.problem_data = generate_valid_problem()
 
-if neglect == "Height" and st.button("Run"):
-    st.write(f"Mass is : {mass} kg")
-    st.write(f"Speed at A is : {speedA} m/s")
-    st.write(f"Slope Length is : {slopelenght} m")
-    st.write(f"Friction is : {friction} N")
-    st.write(f"Speed at B is : {speedB3} m/s")
-    st.write("Find Height")
+data = st.session_state.problem_data
 
-view_answer = st.button("View Answer")
-if view_answer:
-    if neglect == "Friction":
-        st.success(f"Friction is : {friction} N")
-    elif neglect == "Velocity At End":
-        st.success(f"Speed at B is : {speedB3} m/s")
-    elif neglect == "Slope Length":
-        st.success(f"Slope Length is : {slopelenght} m")
-    elif neglect == "Velocity at Start":
-        st.success(f"Speed at A is : {speedA} m/s")
-    elif neglect == "Height":
-        st.success(f"Height is : {height} m")
+# 3. Main UI Card
+st.subheader("Given Values")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.metric(label="Mass (m)", value=f"{data['mass']} kg")
+    if target_var != "Velocity at Start":
+        st.metric(label="Initial Speed ($v_A$)", value=f"{data['speedA']} m/s")
+    if target_var != "Height":
+        st.metric(label="Height (h)", value=f"{data['height']} m")
+
+with col2:
+    if target_var != "Slope Length":
+        st.metric(label="Slope Length (d)", value=f"{data['slopelength']} m")
+    if target_var != "Friction":
+        st.metric(label="Friction ($f_k$)", value=f"{data['friction']} N")
+    if target_var != "Velocity At End":
+        st.metric(label="Final Speed ($v_B$)", value=f"{data['speedB']} m/s")
+
+st.divider()
+
+# Question Display
+target_labels = {
+    "Friction": ("Friction Force ($f_k$)", f"{data['friction']} N"),
+    "Velocity At End": ("Final Velocity ($v_B$)", f"{data['speedB']} m/s"),
+    "Slope Length": ("Slope Length ($d$)", f"{data['slopelength']} m"),
+    "Velocity at Start": ("Initial Velocity ($v_A$)", f"{data['speedA']} m/s"),
+    "Height": ("Initial Height ($h$)", f"{data['height']} m"),
+}
+
+target_name, target_value = target_labels[target_var]
+st.info(f"**Task:** Calculate the **{target_name}**.")
+
+# Answer Reveal
+with st.expander("🔍 Show Answer & Formula"):
+    st.success(f"**{target_name}:** `{target_value}`")
+    st.latex(
+        r"mgh + \frac{1}{2}mv_A^2 - f_k \cdot d = \frac{1}{2}mv_B^2"
+    )
