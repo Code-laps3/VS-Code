@@ -465,7 +465,11 @@ else:
     # DELETE EXAM
     # ========================================================
 
-if exam_to_delete:
+# ========================================================
+# DELETE EXAM
+# ========================================================
+
+if exam_to_delete is not None:
 
     del st.session_state.exams[exam_to_delete]
 
