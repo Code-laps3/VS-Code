@@ -287,126 +287,128 @@ if not st.session_state.exams:
 
 else:
 
-    # Used so we can safely delete an exam after displaying it
     exam_to_delete = None
 
     for exam_name, exam_info in st.session_state.exams.items():
-
-        # ====================================================
-        # EXAM HEADER
-        # ====================================================
-
-        st.markdown(
-            f"## 📚 {exam_name}"
-        )
 
         exam_date = exam_info["Exam Date"]
 
         days_until_exam = (exam_date - date.today()).days
 
-        st.write(
-            f"**Exam date:** {exam_date.strftime('%A, %d %B %Y')}"
-        )
-
-        if days_until_exam > 0:
-            st.info(
-                f"⏳ {days_until_exam} days until this exam"
-            )
-
-        elif days_until_exam == 0:
-            st.warning("🔥 The exam is today!")
-
-        else:
-            st.write(
-                f"This exam was {abs(days_until_exam)} days ago."
-            )
-
         # ====================================================
-        # CREATE STUDY SCHEDULE
+        # EXAM DROPDOWN
         # ====================================================
 
-        schedule = [
+        with st.expander(
+            f"📚 {exam_name} — {exam_date.strftime('%d %B %Y')}",
+            expanded=False
+        ):
 
-            (
-                exam_info["Hard Study Date"],
-                "11 DAYS BEFORE",
-                "🧠 Study hardest topics",
-                exam_info["Hardest Topics"]
-            ),
+            # ------------------------------------------------
+            # COUNTDOWN
+            # ------------------------------------------------
 
-            (
-                exam_info["Medium Study Date"],
-                "9 DAYS BEFORE",
-                "📖 Study medium topics",
-                exam_info["Medium Topics"]
-            ),
+            if days_until_exam > 0:
 
-            (
-                exam_info["Easy Study Date"],
-                "7 DAYS BEFORE",
-                "📘 Study easy topics",
-                exam_info["Easy Topics"]
-            ),
-
-            (
-                exam_info["Paper Date 2"],
-                "5 DAYS BEFORE",
-                "📝 Do mixed past papers",
-                ""
-            ),
-
-            (
-                exam_info["Paper Date 1"],
-                "3 DAYS BEFORE",
-                "📝 Do mixed past papers",
-                ""
-            ),
-
-            (
-                exam_info["Revision Date"],
-                "1 DAY BEFORE",
-                "🔄 Light revision of all content",
-                "Revise all content"
-            )
-        ]
-
-        # ====================================================
-        # DISPLAY SCHEDULE
-        # ====================================================
-
-        st.markdown("### 📅 Revision Schedule")
-
-        for study_date, timing, task, topics in schedule:
-
-            with st.container(border=True):
-
-                st.caption(timing)
-
-                st.write(
-                    f"**{study_date.strftime('%A, %d %B %Y')}**"
+                st.info(
+                    f"⏳ {days_until_exam} days until this exam"
                 )
 
-                st.write(task)
+            elif days_until_exam == 0:
 
-                if topics:
+                st.warning("🔥 The exam is today!")
+
+            else:
+
+                st.write(
+                    f"This exam was {abs(days_until_exam)} days ago."
+                )
+
+            # ------------------------------------------------
+            # REVISION SCHEDULE
+            # ------------------------------------------------
+
+            st.markdown("### 📅 Revision Schedule")
+
+            schedule = [
+
+                (
+                    exam_info["Hard Study Date"],
+                    "11 DAYS BEFORE",
+                    "🧠 Study hardest topics",
+                    exam_info["Hardest Topics"]
+                ),
+
+                (
+                    exam_info["Medium Study Date"],
+                    "9 DAYS BEFORE",
+                    "📖 Study medium topics",
+                    exam_info["Medium Topics"]
+                ),
+
+                (
+                    exam_info["Easy Study Date"],
+                    "7 DAYS BEFORE",
+                    "📘 Study easy topics",
+                    exam_info["Easy Topics"]
+                ),
+
+                (
+                    exam_info["Paper Date 2"],
+                    "5 DAYS BEFORE",
+                    "📝 Do mixed past papers",
+                    ""
+                ),
+
+                (
+                    exam_info["Paper Date 1"],
+                    "3 DAYS BEFORE",
+                    "📝 Do mixed past papers",
+                    ""
+                ),
+
+                (
+                    exam_info["Revision Date"],
+                    "1 DAY BEFORE",
+                    "🔄 Light revision of all content",
+                    "Revise all content"
+                )
+            ]
+
+            # ------------------------------------------------
+            # DISPLAY EACH SESSION
+            # ------------------------------------------------
+
+            for study_date, timing, task, topics in schedule:
+
+                with st.container(border=True):
+
+                    st.caption(timing)
+
                     st.write(
-                        f"📚 **Topics:** {topics}"
+                        f"**{study_date.strftime('%A, %d %B %Y')}**"
                     )
 
-        # ====================================================
-        # DELETE BUTTON
-        # ====================================================
+                    st.write(task)
 
-        if st.button(
-            f"🗑️ Delete {exam_name}",
-            key=f"delete_{exam_name}"
-        ):
-            exam_to_delete = exam_name
+                    if topics:
+                        st.write(
+                            f"📚 **Topics:** {topics}"
+                        )
 
-        st.divider()
+            # ------------------------------------------------
+            # DELETE
+            # ------------------------------------------------
+
+            if st.button(
+                f"🗑️ Delete {exam_name}",
+                key=f"delete_{exam_name}"
+            ):
+
+                exam_to_delete = exam_name
 
     # ========================================================
-    # DELETE EXAM AFTER LOOP
+    # DELETE EXAM
     # ========================================================
 
     if exam_to_delete:
