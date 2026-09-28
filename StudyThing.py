@@ -1,6 +1,61 @@
 import streamlit as st
 from datetime import date, timedelta
 
+import streamlit as st
+from datetime import date, timedelta
+import json
+import os
+
+EXAMS_FILE = "exams.json"
+
+
+def save_exams():
+    """Save all exams permanently to a JSON file."""
+
+    data = {}
+
+    for exam_name, exam_info in st.session_state.exams.items():
+
+        data[exam_name] = {
+            key: value.isoformat() if isinstance(value, date) else value
+            for key, value in exam_info.items()
+        }
+
+    with open(EXAMS_FILE, "w") as file:
+        json.dump(data, file, indent=4)
+
+
+def load_exams():
+    """Load saved exams from the JSON file."""
+
+    if not os.path.exists(EXAMS_FILE):
+        return {}
+
+    with open(EXAMS_FILE, "r") as file:
+        data = json.load(file)
+
+    # Convert saved date strings back into date objects
+    date_keys = [
+        "Exam Date",
+        "Revision Date",
+        "Paper Date 1",
+        "Paper Date 2",
+        "Easy Study Date",
+        "Medium Study Date",
+        "Hard Study Date"
+    ]
+
+    for exam_info in data.values():
+
+        for key in date_keys:
+
+            if key in exam_info:
+                exam_info[key] = date.fromisoformat(
+                    exam_info[key]
+                )
+
+    return data
+
 
 # ============================================================
 # PAGE CONFIG
@@ -112,10 +167,8 @@ st.markdown("""
 # ============================================================
 # SESSION STATE
 # ============================================================
-
 if "exams" not in st.session_state:
-    st.session_state.exams = {}
-
+    st.session_state.exams = load_exams()
 
 # ============================================================
 # HEADER
@@ -231,6 +284,7 @@ if save_exam:
 
             "Easy Topics": easy_topics
         }
+        save_exams()
 
         st.success(f"{exam_name} has been added!")
 
@@ -411,8 +465,10 @@ else:
     # DELETE EXAM
     # ========================================================
 
-    if exam_to_delete:
+if exam_to_delete:
 
-        del st.session_state.exams[exam_to_delete]
+    del st.session_state.exams[exam_to_delete]
 
-        st.rerun()
+    save_exams()
+
+    st.rerun()
