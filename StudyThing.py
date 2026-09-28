@@ -338,7 +338,6 @@ if not st.session_state.exams:
         "Use the panel on the left to add your first exam."
     )
 
-
 else:
 
     exam_to_delete = None
@@ -346,7 +345,6 @@ else:
     for exam_name, exam_info in st.session_state.exams.items():
 
         exam_date = exam_info["Exam Date"]
-
         days_until_exam = (exam_date - date.today()).days
 
         # ====================================================
@@ -458,21 +456,10 @@ else:
                 f"🗑️ Delete {exam_name}",
                 key=f"delete_{exam_name}"
             ):
-
                 exam_to_delete = exam_name
 
-    # ========================================================
-    # DELETE EXAM
-    # ========================================================
-
-# ========================================================
-# DELETE EXAM
-# ========================================================
-
-if exam_to_delete is not None:
-
-    del st.session_state.exams[exam_to_delete]
-
-    save_exams()
-
-    st.rerun()
+    # DELETE AFTER THE LOOP
+    if exam_to_delete is not None:
+        del st.session_state.exams[exam_to_delete]
+        save_exams()
+        st.rerun()
