@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta
 from sqlalchemy import text
 
 # ============================================================
-# PAGE CONFIG (Must be at the top)
+# PAGE CONFIG
 # ============================================================
 st.set_page_config(
     page_title="Study Schedule",
@@ -27,32 +27,40 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ============================================================
-# DATABASE INITIALIZATION
+# NEON POSTGRESQL CONNECTION
 # ============================================================
-conn = st.connection("postgres", type="sql")
+DATABASE_URL = "postgresql://neondb_owner:npg_rcv9u1okSKyi@ep-weathered-unit-b48cjlbm-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+
+conn = st.connection("neon_db", type="sql", url=DATABASE_URL)
 
 try:
     with conn.engine.connect() as session:
         session.execute(text("""
-            CREATE TABLE IF NOT EXISTS study_sessions (
-                subject TEXT PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS user_study_sessions (
+                user_id TEXT NOT NULL,
+                subject TEXT NOT NULL,
                 exam_date DATE NOT NULL,
                 hardest_topics TEXT,
                 medium_topics TEXT,
                 easy_topics TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (user_id, subject)
             );
         """))
         session.commit()
 except Exception as e:
-    st.error(f"Database setup error: {e}")
+    st.error(f"Database initialization error: {e}")
 
 # ============================================================
 # DATABASE HELPER FUNCTIONS
 # ============================================================
-def load_exams():
+def load_user_exams(user_id):
     try:
-        df = conn.query("SELECT subject, exam_date, hardest_topics, medium_topics, easy_topics FROM study_sessions ORDER BY exam_date ASC;", ttl="0s")
+        df = conn.query(
+            "SELECT subject, exam_date, hardest_topics, medium_topics, easy_topics FROM user_study_sessions WHERE user_id = :u_id ORDER BY exam_date ASC;",
+            params={"u_id": user_id},
+            ttl="0s"
+        )
         
         exams_dict = {}
         for row in df.to_dict(orient="records"):
@@ -79,46 +87,66 @@ def load_exams():
         st.error(f"Error loading exams: {e}")
         return {}
 
-def save_exams():
+def save_user_exam(user_id, subject_name, exam_info):
     try:
         with conn.engine.connect() as session:
-            session.execute(text("DELETE FROM study_sessions;"))
-            for subject_name, exam in st.session_state.exams.items():
-                session.execute(
-                    text("""
-                        INSERT INTO study_sessions (subject, exam_date, hardest_topics, medium_topics, easy_topics)
-                        VALUES (:subject, :exam_date, :hard, :medium, :easy);
-                    """),
-                    {
-                        "subject": subject_name,
-                        "exam_date": str(exam["Exam Date"]),
-                        "hard": exam["Hardest Topics"],
-                        "medium": exam["Medium Topics"],
-                        "easy": exam["Easy Topics"]
-                    }
-                )
+            session.execute(
+                text("""
+                    INSERT INTO user_study_sessions (user_id, subject, exam_date, hardest_topics, medium_topics, easy_topics)
+                    VALUES (:user_id, :subject, :exam_date, :hard, :medium, :easy)
+                    ON CONFLICT (user_id, subject) DO UPDATE SET
+                        exam_date = EXCLUDED.exam_date,
+                        hardest_topics = EXCLUDED.hardest_topics,
+                        medium_topics = EXCLUDED.medium_topics,
+                        easy_topics = EXCLUDED.easy_topics;
+                """),
+                {
+                    "user_id": user_id,
+                    "subject": subject_name,
+                    "exam_date": str(exam_info["Exam Date"]),
+                    "hard": exam_info["Hardest Topics"],
+                    "medium": exam_info["Medium Topics"],
+                    "easy": exam_info["Easy Topics"]
+                }
+            )
             session.commit()
     except Exception as e:
         st.error(f"Error saving to database: {e}")
 
-# ============================================================
-# INITIALIZE SESSION STATE
-# ============================================================
-if "exams" not in st.session_state:
+def delete_user_exam(user_id, subject_name):
     try:
-        st.session_state.exams = load_exams()
+        with conn.engine.connect() as session:
+            session.execute(
+                text("DELETE FROM user_study_sessions WHERE user_id = :user_id AND subject = :subject;"),
+                {"user_id": user_id, "subject": subject_name}
+            )
+            session.commit()
     except Exception as e:
-        st.error(f"Failed to initialize session state: {e}")
-        st.session_state.exams = {}
+        st.error(f"Error deleting exam: {e}")
+
+# ============================================================
+# USER SELECTION / AUTHENTICATION
+# ============================================================
+st.sidebar.title("👤 User Login")
+user_name = st.sidebar.text_input("Enter Student ID / Name:", value="Student 1")
+
+if not user_name.strip():
+    st.warning("Please enter your Student ID or Name in the sidebar to view your study schedule.")
+    st.stop()
+
+current_user = user_name.strip().lower()
+
+# Load exams for active student from Neon DB
+exams = load_user_exams(current_user)
 
 # ============================================================
 # HEADER
 # ============================================================
 st.markdown('<div class="main-title">📚 Study Sensi</div>', unsafe_allow_html=True)
 st.markdown(
-    '<div class="subtitle">'
-    'Your personalised exam revision planner using the 1–3–5–7–9–11 day system.'
-    '</div>',
+    f'<div class="subtitle">'
+    f'Active Profile: <strong>{user_name.strip()}</strong> | 1–3–5–7–9–11 day revision schedule.'
+    f'</div>',
     unsafe_allow_html=True
 )
 
@@ -127,7 +155,7 @@ st.markdown(
 # ============================================================
 with st.sidebar:
     st.header("➕ Add Exam")
-    st.write("Enter your exam details and Study Sensi will build your revision schedule.")
+    st.write("Enter exam details to generate your schedule.")
 
     with st.form("exam_form"):
         exam_name = st.text_input("Subject", placeholder="e.g. Mathematics")
@@ -140,15 +168,12 @@ with st.sidebar:
 
         save_exam = st.form_submit_button("💾 Save Exam", use_container_width=True)
 
-# ============================================================
-# SAVE EXAM ACTION
-# ============================================================
 if save_exam:
     if not exam_name.strip():
         st.error("Please enter a subject name.")
     else:
         subject_key = exam_name.strip()
-        st.session_state.exams[subject_key] = {
+        exam_data = {
             "Exam Date": exam_date_val,
             "Revision Date": exam_date_val - timedelta(days=1),
             "Paper Date 1": exam_date_val - timedelta(days=3),
@@ -160,16 +185,14 @@ if save_exam:
             "Medium Topics": medium_topics,
             "Easy Topics": easy_topics
         }
-        save_exams()
-        st.success(f"{subject_key} has been added!")
+        save_user_exam(current_user, subject_key, exam_data)
+        st.success(f"{subject_key} saved for {user_name.strip()}!")
         st.rerun()
 
 # ============================================================
 # DASHBOARD STATISTICS
 # ============================================================
 st.subheader("📊 Your Study Dashboard")
-
-exams = st.session_state.get("exams", {})
 
 col1, col2, col3 = st.columns(3)
 
@@ -190,7 +213,7 @@ with col3:
 st.subheader("📝 Your Exams")
 
 if not exams:
-    st.info("You don't have any exams yet. Use the panel on the left to add your first exam.")
+    st.info("No exams added yet for this student ID. Use the sidebar on the left to add your first exam.")
 else:
     exam_to_delete = None
 
@@ -226,9 +249,4 @@ else:
                         st.write(f"📚 **Topics:** {topics}")
 
             if st.button(f"🗑️ Delete {exam_name}", key=f"delete_{exam_name}"):
-                exam_to_delete = exam_name
-
-    if exam_to_delete is not None:
-        del st.session_state.exams[exam_to_delete]
-        save_exams()
-        st.rerun()
+                exam_to_delete = exam
