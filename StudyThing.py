@@ -172,3 +172,40 @@ with st.sidebar:
 
 if save_exam:
     if not exam_name.strip():
+        st.error("Please enter a subject name.")
+    else:
+        revision_date = exam_date - timedelta(days=1)
+        paper_date_1 = exam_date - timedelta(days=3)
+        paper_date_2 = exam_date - timedelta(days=5)
+        easy_date = exam_date - timedelta(days=7)
+        medium_date = exam_date - timedelta(days=9)
+        hard_date = exam_date - timedelta(days=11)
+
+        st.session_state.exams[exam_name.strip()] = {
+            "Exam Date": exam_date,
+            "Revision Date": revision_date,
+            "Paper Date 1": paper_date_1,
+            "Paper Date 2": paper_date_2,
+            "Easy Study Date": easy_date,
+            "Medium Study Date": medium_date,
+            "Hard Study Date": hard_date,
+            "Hardest Topics": hardest_topics,
+            "Medium Topics": medium_topics,
+            "Easy Topics": easy_topics,
+        }
+        save_exams()
+        st.success(f"{exam_name} has been added!")
+
+
+# ============================================================
+# DASHBOARD STATISTICS
+# ============================================================
+
+st.subheader("📊 Your Study Dashboard")
+
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    st.metric("Exams", len(st.session_state.exams))
+
+with col
