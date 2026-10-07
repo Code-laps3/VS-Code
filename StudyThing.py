@@ -5,23 +5,21 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 
-import streamlit as st
-
-import streamlit as st
+from sqlalchemy import text
 
 # Establish PostgreSQL connection
 conn = st.connection("postgres", type="sql")
 
 # Ensure table exists before querying
 with conn.session as session:
-    session.execute("""
+    session.execute(text("""
         CREATE TABLE IF NOT EXISTS study_sessions (
             id SERIAL PRIMARY KEY,
             subject TEXT NOT NULL,
             exam_date DATE NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
-    """)
+    """))
     session.commit()
 
 # Read data from database
