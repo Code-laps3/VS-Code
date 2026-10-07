@@ -175,6 +175,7 @@ with col3:
     st.metric("Study Sessions", total_tasks)
 
 # ============================================================
+# ============================================================
 # EXAMS LIST
 # ============================================================
 st.subheader("📝 Your Exams")
@@ -182,13 +183,21 @@ st.subheader("📝 Your Exams")
 if not st.session_state.exams:
     st.info("You don't have any exams yet. Use the panel on the left to add your first exam.")
 else:
-with st.expander(f"📚 {exam_name} — {exam_dt.strftime('%d %B %Y')}", expanded=False):
+    exam_to_delete = None
 
+    for exam_name, exam_info in st.session_state.exams.items():
+        exam_dt = exam_info["Exam Date"]
+        days_until_exam = (exam_dt - date.today()).days
+
+        with st.expander(f"📚 {exam_name} — {exam_dt.strftime('%d %B %Y')}", expanded=False):
             if days_until_exam > 0:
                 st.info(f"⏳ {days_until_exam} days until this exam")
             elif days_until_exam == 0:
                 st.warning("🔥 The exam is today!")
             else:
+                st.write(f"This exam was {abs(days_until_exam)} days ago.")
+
+            st.markdown("### 📅 Revision Schedule")
                 st.write(f"This exam was {abs(days_until_exam)} days ago.")
 
             st.markdown("### 📅 Revision Schedule")
