@@ -5,10 +5,14 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 
-# Establish Google Sheets connection
-from streamlit_gsheets import GSheetsConnection
+import streamlit as st
 
-conn = st.connection("gsheets", type=GSheetsConnection)
+# Establish PostgreSQL connection via Streamlit Secrets
+conn = st.connection("postgres", type="sql")
+
+# Read data from database
+df = conn.query("SELECT * FROM study_sessions;", ttl="0s")
+st.dataframe(df)
 
 DATE_KEYS = [
     "Exam Date",
