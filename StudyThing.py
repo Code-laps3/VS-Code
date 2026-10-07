@@ -7,13 +7,26 @@ from datetime import date
 
 import streamlit as st
 
-# Establish PostgreSQL connection via Streamlit Secrets
+import streamlit as st
+
+# Establish PostgreSQL connection
 conn = st.connection("postgres", type="sql")
+
+# Ensure table exists before querying
+with conn.session as session:
+    session.execute("""
+        CREATE TABLE IF NOT EXISTS study_sessions (
+            id SERIAL PRIMARY KEY,
+            subject TEXT NOT NULL,
+            exam_date DATE NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+    session.commit()
 
 # Read data from database
 df = conn.query("SELECT * FROM study_sessions;", ttl="0s")
 st.dataframe(df)
-
 DATE_KEYS = [
     "Exam Date",
     "Revision Date",
