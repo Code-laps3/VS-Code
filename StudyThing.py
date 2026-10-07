@@ -1,16 +1,15 @@
 import streamlit as st
 from datetime import date, timedelta
-
 import streamlit as st
 import pandas as pd
-from datetime import date
-
 from sqlalchemy import text
 
-# Establish PostgreSQL connection
+st.title("📚 Study Sensi")
+
+# Establish SQL connection
 conn = st.connection("postgres", type="sql")
 
-# Ensure table exists before querying
+# 1. Initialize table automatically
 with conn.session as session:
     session.execute(text("""
         CREATE TABLE IF NOT EXISTS study_sessions (
@@ -22,67 +21,33 @@ with conn.session as session:
     """))
     session.commit()
 
-# Read data from database
-df = conn.query("SELECT * FROM study_sessions;", ttl="0s")
-st.dataframe(df)
-DATE_KEYS = [
-    "Exam Date",
-    "Revision Date",
-    "Paper Date 1",
-    "Paper Date 2",
-    "Easy Study Date",
-    "Medium Study Date",
-    "Hard Study Date"
-]
+# 2. Form to submit new study sessions
+with st.form("add_session_form", clear_on_submit=True):
+    st.subheader("Add New Study Session")
+    subject = st.text_input("Subject")
+    exam_date = st.date_input("Exam Date")
+    submitted = st.form_submit_button("Save Session")
 
-def save_exams():
-    """Save exams directly to Google Sheets."""
-    if "exams" not in st.session_state or not st.session_state.exams:
-        st.warning("⚠️ No exam data found in session state to save.")
-        return
+    if submitted:
+        if subject.strip():
+            with conn.session as session:
+                session.execute(
+                    text("INSERT INTO study_sessions (subject, exam_date) VALUES (:subject, :date);"),
+                    {"subject": subject, "date": exam_date}
+                )
+                session.commit()
+            st.success(f"Saved session for {subject}!")
+            st.rerun()
+        else:
+            st.error("Please enter a subject name.")
 
-    rows = []
-    # Convert st.session_state.exams into tabular rows
-    for exam_name, exam_info in st.session_state.exams.items():
-        row = {"Exam Name": exam_name}
-        for k, v in exam_info.items():
-            row[k] = v.isoformat() if isinstance(v, date) else str(v)
-        rows.append(row)
-    
-    try:
-        df = pd.DataFrame(rows)
-        # Write to Google Sheet
-        conn.update(data=df)
-        st.success("✅ Exams successfully saved to Google Sheet!")
-    except Exception as e:
-        st.error(f"❌ Failed to save to Google Sheet: {e}")
-
-
-def load_exams():
-    """Load saved exams directly from Google Sheets."""
-    try:
-        df = conn.read(ttl=0) # ttl=0 forces fresh fetch
-        if df.empty:
-            return {}
-        
-        data = {}
-        for _, row in df.iterrows():
-            exam_name = row["Exam Name"]
-            exam_info = row.drop("Exam Name").to_dict()
-            
-            # Convert ISO date strings back into date objects
-            for key in DATE_KEYS:
-                if key in exam_info and pd.notna(exam_info[key]):
-                    exam_info[key] = date.fromisoformat(str(exam_info[key]))
-            
-            data[exam_name] = exam_info
-            
-        return data
-    except Exception as e:
-        st.warning(f"Could not load data from Google Sheet: {e}")
-        return {}
-
-# ============================================================
+# 3. Load and display existing sessions
+st.subheader("Saved Sessions")
+try:
+    df = conn.query("SELECT id, subject, exam_date, created_at FROM study_sessions ORDER BY exam_date ASC;", ttl="0s")
+    st.dataframe(df, use_container_width=True)
+except Exception as e:
+    st.error(f"Could not load data from database: {e}")
 # PAGE CONFIG
 # ============================================================
 
