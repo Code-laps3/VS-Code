@@ -29,25 +29,15 @@ st.markdown("""
 # ============================================================
 # ============================================================
 # ============================================================
-# DATABASE INITIALIZATION
 # ============================================================
-conn = st.connection("postgres", type="sql")
-
-try:
-    with conn.engine.connect() as session:
-        session.execute(text("""
-            CREATE TABLE IF NOT EXISTS study_sessions (
-                subject TEXT PRIMARY KEY,
-                exam_date DATE NOT NULL,
-                hardest_topics TEXT,
-                medium_topics TEXT,
-                easy_topics TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-        """))
-        session.commit()
-except Exception as e:
-    st.error(f"Database connection failed: {e}")
+# INITIALIZE SESSION STATE
+# ============================================================
+if "exams" not in st.session_state:
+    try:
+        st.session_state.exams = load_exams()
+    except Exception as e:
+        st.error(f"Failed to initialize session state: {e}")
+        st.session_state.exams = {}
 # ============================================================
 # DATABASE HELPER FUNCTIONS
 # ============================================================
