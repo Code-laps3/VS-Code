@@ -2,60 +2,68 @@ import streamlit as st
 from datetime import date, timedelta
 
 import streamlit as st
-from datetime import date, timedelta
-import json
-import os
+import pandas as pd
+from datetime import date
 
-EXAMS_FILE = "exams.json"
+# Establish Google Sheets connection
+conn = st.connection("gsheets", type="gsheets")
 
+DATE_KEYS = [
+    "Exam Date",
+    "Revision Date",
+    "Paper Date 1",
+    "Paper Date 2",
+    "Easy Study Date",
+    "Medium Study Date",
+    "Hard Study Date"
+]
 
 def save_exams():
-    """Save all exams permanently to a JSON file."""
+    """Save exams directly to Google Sheets."""
+    if "exams" not in st.session_state or not st.session_state.exams:
+        st.warning("⚠️ No exam data found in session state to save.")
+        return
 
-    data = {}
-
+    rows = []
+    # Convert st.session_state.exams into tabular rows
     for exam_name, exam_info in st.session_state.exams.items():
-
-        data[exam_name] = {
-            key: value.isoformat() if isinstance(value, date) else value
-            for key, value in exam_info.items()
-        }
-
-    with open(EXAMS_FILE, "w") as file:
-        json.dump(data, file, indent=4)
+        row = {"Exam Name": exam_name}
+        for k, v in exam_info.items():
+            row[k] = v.isoformat() if isinstance(v, date) else str(v)
+        rows.append(row)
+    
+    try:
+        df = pd.DataFrame(rows)
+        # Write to Google Sheet
+        conn.update(data=df)
+        st.success("✅ Exams successfully saved to Google Sheet!")
+    except Exception as e:
+        st.error(f"❌ Failed to save to Google Sheet: {e}")
 
 
 def load_exams():
-    """Load saved exams from the JSON file."""
-
-    if not os.path.exists(EXAMS_FILE):
+    """Load saved exams directly from Google Sheets."""
+    try:
+        df = conn.read(ttl=0) # ttl=0 forces fresh fetch
+        if df.empty:
+            return {}
+        
+        data = {}
+        for _, row in df.iterrows():
+            exam_name = row["Exam Name"]
+            exam_info = row.drop("Exam Name").to_dict()
+            
+            # Convert ISO date strings back into date objects
+            for key in DATE_KEYS:
+                if key in exam_info and pd.notna(exam_info[key]):
+                    exam_info[key] = date.fromisoformat(str(exam_info[key]))
+            
+            data[exam_name] = exam_info
+            
+        return data
+    except Exception as e:
+        st.warning(f"Could not load data from Google Sheet: {e}")
         return {}
-
-    with open(EXAMS_FILE, "r") as file:
-        data = json.load(file)
-
-    # Convert saved date strings back into date objects
-    date_keys = [
-        "Exam Date",
-        "Revision Date",
-        "Paper Date 1",
-        "Paper Date 2",
-        "Easy Study Date",
-        "Medium Study Date",
-        "Hard Study Date"
-    ]
-
-    for exam_info in data.values():
-
-        for key in date_keys:
-
-            if key in exam_info:
-                exam_info[key] = date.fromisoformat(
-                    exam_info[key]
-                )
-
-    return data
-
 
 # ============================================================
 # PAGE CONFIG
