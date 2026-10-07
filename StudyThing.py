@@ -333,7 +333,13 @@ else:
 
             col_dl, col_del = st.columns([1, 1])
 
-        
+            with col_dl:
+                st.download_button(
+                    label=f"📥 Download {exam_name} Data (JSON)",
+                    data=subject_json_data,
+                    file_name=f"{exam_name.lower().replace(' ', '_')}_schedule.json",
+                    mime="application/json",
+                    use_container_width=True,
                 )
 
             with col_del:
