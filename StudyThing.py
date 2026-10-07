@@ -6,7 +6,9 @@ import pandas as pd
 from datetime import date
 
 # Establish Google Sheets connection
-conn = st.connection("gsheets", type="gsheets")
+from streamlit_gsheets import GSheetsConnection
+
+conn = st.connection("gsheets", type=GSheetsConnection)
 
 DATE_KEYS = [
     "Exam Date",
