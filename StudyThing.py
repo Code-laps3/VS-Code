@@ -162,4 +162,5 @@ with col1:
     st.metric("Exams", len(st.session_state.exams))
 
 with col2:
-    upcoming = sum(1 for exam in st.session_state.exams.values() if exam["Exam Date"] >=
+    upcoming = sum(1 for exam in st.session_state.exams.values() if exam["Exam Date"] >= date.today())
+    st.metric("Upcoming Exams", upcoming)
