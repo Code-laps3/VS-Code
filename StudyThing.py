@@ -195,7 +195,7 @@ else:
             elif days_until_exam == 0:
                 st.warning("🔥 The exam is today!")
             else:
-                st.write(f"This exam was {abs(days_until_exam)} days ago.")
+            st.write(f"This exam was {abs(days_until_exam)} days ago.")
 
             st.markdown("### 📅 Revision Schedule")
                 st.write(f"This exam was {abs(days_until_exam)} days ago.")
