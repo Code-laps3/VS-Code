@@ -50,9 +50,12 @@ def load_exams():
         
         exams_dict = {}
         for row in df.to_dict(orient="records"):
+            # Safely handle both string and date object types
             exam_dt = row["exam_date"]
             if isinstance(exam_dt, str):
                 exam_dt = datetime.strptime(exam_dt, "%Y-%m-%d").date()
+            elif isinstance(exam_dt, pd.Timestamp):
+                exam_dt = exam_dt.date()
 
             exams_dict[row["subject"]] = {
                 "Exam Date": exam_dt,
@@ -82,7 +85,7 @@ def save_exams():
                 """),
                 {
                     "subject": subject_name,
-                    "exam_date": exam["Exam Date"],
+                    "exam_date": str(exam["Exam Date"]),
                     "hard": exam["Hardest Topics"],
                     "medium": exam["Medium Topics"],
                     "easy": exam["Easy Topics"]
@@ -91,10 +94,6 @@ def save_exams():
         conn.session.commit()
     except Exception as e:
         st.error(f"Error saving to database: {e}")
-
-# Initialize Session State
-if "exams" not in st.session_state:
-    st.session_state.exams = load_exams()
 
 # ============================================================
 # HEADER
