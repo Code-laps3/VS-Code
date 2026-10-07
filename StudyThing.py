@@ -4,12 +4,10 @@ import streamlit as st
 import pandas as pd
 from sqlalchemy import text
 
-st.title("📚 Study Sensi")
-
-# Establish connection using the secret key 'postgres'
+# Establish SQL connection
 conn = st.connection("postgres", type="sql")
 
-# 1. Initialize table automatically
+# Ensure table exists
 with conn.session as session:
     session.execute(text("""
         CREATE TABLE IF NOT EXISTS study_sessions (
@@ -21,33 +19,19 @@ with conn.session as session:
     """))
     session.commit()
 
-# 2. Add New Study Session Form
-with st.form("add_session_form", clear_on_submit=True):
-    st.subheader("Add New Study Session")
-    subject = st.text_input("Subject")
-    exam_date = st.date_input("Exam Date")
-    submitted = st.form_submit_button("Save Session")
+# Define load_exams function BEFORE calling it
+def load_exams():
+    try:
+        df = conn.query("SELECT subject, exam_date FROM study_sessions ORDER BY exam_date ASC;", ttl="0s")
+        # Convert DataFrame to list of dicts if your app expects list format
+        return df.to_dict(orient="records")
+    except Exception as e:
+        st.error(f"Error loading exams: {e}")
+        return []
 
-    if submitted:
-        if subject.strip():
-            with conn.session as session:
-                session.execute(
-                    text("INSERT INTO study_sessions (subject, exam_date) VALUES (:subject, :date);"),
-                    {"subject": subject, "date": exam_date}
-                )
-                session.commit()
-            st.success(f"Saved session for {subject}!")
-            st.rerun()
-        else:
-            st.error("Please enter a subject name.")
-
-# 3. Load & Display Data
-st.subheader("Saved Sessions")
-try:
-    df = conn.query("SELECT id, subject, exam_date, created_at FROM study_sessions ORDER BY exam_date ASC;", ttl="0s")
-    st.dataframe(df, use_container_width=True)
-except Exception as e:
-    st.error(f"Could not load data from database: {e}")
+# Now line 161 will work without throwing a NameError:
+if "exams" not in st.session_state or st.button("Refresh Data"):
+    st.session_state.exams = load_exams()
 # PAGE CONFIG
 # ============================================================
 
