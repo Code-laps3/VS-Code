@@ -187,17 +187,13 @@ else:
 
     for exam_name, exam_info in st.session_state.exams.items():
         exam_dt = exam_info["Exam Date"]
-        days_until_exam = (exam_dt - date.today()).days
-
-        with st.expander(f"📚 {exam_name} — {exam_dt.strftime('%d %B %Y')}", expanded=False):
+with st.expander(f"📚 {exam_name} — {exam_dt.strftime('%d %B %Y')}", expanded=False):
             if days_until_exam > 0:
                 st.info(f"⏳ {days_until_exam} days until this exam")
             elif days_until_exam == 0:
                 st.warning("🔥 The exam is today!")
             else:
-            st.write(f"This exam was {abs(days_until_exam)} days ago.")
-
-            st.markdown("### 📅 Revision Schedule")
                 st.write(f"This exam was {abs(days_until_exam)} days ago.")
 
+            st.markdown("### 📅 Revision Schedule")
             st.markdown("### 📅 Revision Schedule")
