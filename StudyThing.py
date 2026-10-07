@@ -4,6 +4,8 @@ import streamlit as st
 import pandas as pd
 from sqlalchemy import text
 
+st.title("📚 Study Sensi")
+
 # Establish SQL connection
 conn = st.connection("postgres", type="sql")
 
@@ -19,18 +21,26 @@ with conn.session as session:
     """))
     session.commit()
 
-# Define load_exams function BEFORE calling it
+# ==========================================
+# PASTE THE SNIPPET HERE (BEFORE LINE 161)
+# ==========================================
 def load_exams():
     try:
         df = conn.query("SELECT subject, exam_date FROM study_sessions ORDER BY exam_date ASC;", ttl="0s")
-        # Convert DataFrame to list of dicts if your app expects list format
-        return df.to_dict(orient="records")
+        
+        exams_dict = {}
+        for row in df.to_dict(orient="records"):
+            exams_dict[row["subject"]] = {
+                "subject": row["subject"],
+                "exam_date": row["exam_date"]
+            }
+        return exams_dict
     except Exception as e:
         st.error(f"Error loading exams: {e}")
-        return []
+        return {}
 
-# Now line 161 will work without throwing a NameError:
-if "exams" not in st.session_state or st.button("Refresh Data"):
+# Line 161 (or wherever state is initialized):
+if "exams" not in st.session_state:
     st.session_state.exams = load_exams()
 # PAGE CONFIG
 # ============================================================
