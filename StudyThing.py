@@ -30,7 +30,6 @@ st.markdown("""
 # DATABASE INITIALIZATION
 # ============================================================
 conn = st.connection("postgres", type="sql")
-
 conn.session.execute(text("""
     CREATE TABLE IF NOT EXISTS study_sessions (
         subject TEXT PRIMARY KEY,
@@ -42,7 +41,6 @@ conn.session.execute(text("""
     );
 """))
 conn.session.commit()
-
 # ============================================================
 # DATABASE HELPER FUNCTIONS
 # ============================================================
