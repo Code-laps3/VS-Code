@@ -31,28 +31,51 @@ st.markdown("""
 # ============================================================
 conn = st.connection("postgres", type="sql")
 
-with conn.session as session:
-    session.execute(text("""
-        CREATE TABLE IF NOT EXISTS study_sessions (
-            subject TEXT PRIMARY KEY,
-            exam_date DATE NOT NULL,
-            hardest_topics TEXT,
-            medium_topics TEXT,
-            easy_topics TEXT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    """))
-    session.commit()
+conn.session.execute(text("""
+    CREATE TABLE IF NOT EXISTS study_sessions (
+        subject TEXT PRIMARY KEY,
+        exam_date DATE NOT NULL,
+        hardest_topics TEXT,
+        medium_topics TEXT,
+        easy_topics TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+"""))
+conn.session.commit()
 
 # ============================================================
 # DATABASE HELPER FUNCTIONS
 # ============================================================
+def load_exams():
+    try:
+        df = conn.query("SELECT subject, exam_date, hardest_topics, medium_topics, easy_topics FROM study_sessions ORDER BY exam_date ASC;", ttl="0s")
+        
+        exams_dict = {}
+        for row in df.to_dict(orient="records"):
+            exam_dt = row["exam_date"]
+            if isinstance(exam_dt, str):
+                exam_dt = datetime.strptime(exam_dt, "%Y-%m-%d").date()
+
+            exams_dict[row["subject"]] = {
+                "Exam Date": exam_dt,
+                "Revision Date": exam_dt - timedelta(days=1),
+                "Paper Date 1": exam_dt - timedelta(days=3),
+                "Paper Date 2": exam_dt - timedelta(days=5),
+                "Easy Study Date": exam_dt - timedelta(days=7),
+                "Medium Study Date": exam_dt - timedelta(days=9),
+                "Hard Study Date": exam_dt - timedelta(days=11),
+                "Hardest Topics": row["hardest_topics"] or "",
+                "Medium Topics": row["medium_topics"] or "",
+                "Easy Topics": row["easy_topics"] or ""
+            }
+        return exams_dict
+    except Exception as e:
+        st.error(f"Error loading exams: {e}")
+        return {}
+
 def save_exams():
     try:
-        # Clear existing records
         conn.session.execute(text("DELETE FROM study_sessions;"))
-        
-        # Re-insert current exams
         for subject_name, exam in st.session_state.exams.items():
             conn.session.execute(
                 text("""
@@ -68,29 +91,6 @@ def save_exams():
                 }
             )
         conn.session.commit()
-    except Exception as e:
-        st.error(f"Error saving to database: {e}")
-
-def save_exams():
-    try:
-        with conn.session as session:
-            # Sync Neon table with st.session_state.exams
-            session.execute(text("DELETE FROM study_sessions;"))
-            for subject_name, exam in st.session_state.exams.items():
-                session.execute(
-                    text("""
-                        INSERT INTO study_sessions (subject, exam_date, hardest_topics, medium_topics, easy_topics)
-                        VALUES (:subject, :exam_date, :hard, :medium, :easy);
-                    """),
-                    {
-                        "subject": subject_name,
-                        "exam_date": exam["Exam Date"],
-                        "hard": exam["Hardest Topics"],
-                        "medium": exam["Medium Topics"],
-                        "easy": exam["Easy Topics"]
-                    }
-                )
-            session.commit()
     except Exception as e:
         st.error(f"Error saving to database: {e}")
 
@@ -162,33 +162,4 @@ with col1:
     st.metric("Exams", len(st.session_state.exams))
 
 with col2:
-    upcoming = sum(1 for exam in st.session_state.exams.values() if exam["Exam Date"] >= date.today())
-    st.metric("Upcoming Exams", upcoming)
-
-with col3:
-    total_tasks = len(st.session_state.exams) * 6
-    st.metric("Study Sessions", total_tasks)
-
-# ============================================================
-# ============================================================
-# EXAMS LIST
-# ============================================================
-st.subheader("📝 Your Exams")
-
-if not st.session_state.exams:
-    st.info("You don't have any exams yet. Use the panel on the left to add your first exam.")
-else:
-    exam_to_delete = None
-
-    for exam_name, exam_info in st.session_state.exams.items():
-        exam_dt = exam_info["Exam Date"]
-with st.expander(f"📚 {exam_name} — {exam_dt.strftime('%d %B %Y')}", expanded=False):
-            if days_until_exam > 0:
-                st.info(f"⏳ {days_until_exam} days until this exam")
-            elif days_until_exam == 0:
-                st.warning("🔥 The exam is today!")
-            else:
-                st.write(f"This exam was {abs(days_until_exam)} days ago.")
-
-            st.markdown("### 📅 Revision Schedule")
-            st.markdown("### 📅 Revision Schedule")
+    upcoming = sum(1 for exam in st.session_state.exams.values() if exam["Exam Date"] >=
