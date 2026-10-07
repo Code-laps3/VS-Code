@@ -21,6 +21,24 @@ with conn.session as session:
     """))
     session.commit()
 
+def save_exams():
+    try:
+        with conn.session as session:
+            for exam in st.session_state.exams.values():
+                session.execute(
+                    text("""
+                        INSERT INTO study_sessions (subject, exam_date)
+                        VALUES (:subject, :exam_date)
+                        ON CONFLICT DO NOTHING;
+                    """),
+                    {
+                        "subject": exam["subject"],
+                        "exam_date": exam["exam_date"],
+                    },
+                )
+            session.commit()
+    except Exception as e:
+        st.error(f"Error saving exams: {e}")
 # ==========================================
 # PASTE THE SNIPPET HERE (BEFORE LINE 161)
 # ==========================================
