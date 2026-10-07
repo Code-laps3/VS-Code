@@ -6,7 +6,7 @@ from sqlalchemy import text
 
 st.title("📚 Study Sensi")
 
-# Establish SQL connection
+# Establish connection using the secret key 'postgres'
 conn = st.connection("postgres", type="sql")
 
 # 1. Initialize table automatically
@@ -21,7 +21,7 @@ with conn.session as session:
     """))
     session.commit()
 
-# 2. Form to submit new study sessions
+# 2. Add New Study Session Form
 with st.form("add_session_form", clear_on_submit=True):
     st.subheader("Add New Study Session")
     subject = st.text_input("Subject")
@@ -41,7 +41,7 @@ with st.form("add_session_form", clear_on_submit=True):
         else:
             st.error("Please enter a subject name.")
 
-# 3. Load and display existing sessions
+# 3. Load & Display Data
 st.subheader("Saved Sessions")
 try:
     df = conn.query("SELECT id, subject, exam_date, created_at FROM study_sessions ORDER BY exam_date ASC;", ttl="0s")
