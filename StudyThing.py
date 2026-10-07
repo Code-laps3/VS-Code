@@ -1,14 +1,15 @@
 import streamlit as st
-import pandas as pd
 from datetime import date, datetime, timedelta
-from sqlalchemy import text
+import calendar
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 # ============================================================
 # PAGE CONFIG
 # ============================================================
 st.set_page_config(
-    page_title="Study Schedule",
-    page_icon="📚",
+    page_title="Study Schedule Generator",
+    page_icon="📅",
     layout="wide"
 )
 
@@ -21,232 +22,203 @@ st.markdown("""
     .block-container { max-width: 1200px; padding-top: 2rem; padding-bottom: 3rem; }
     .main-title { font-size: 3rem; font-weight: 800; margin-bottom: 0; }
     .subtitle { color: #94a3b8; font-size: 1.1rem; margin-bottom: 2rem; }
-    [data-testid="stMetric"] { background-color: #1e293b; border: 1px solid #334155; padding: 1rem; border-radius: 14px; }
-    .stButton > button { border-radius: 10px; font-weight: 600; }
 </style>
 """, unsafe_allow_html=True)
 
 # ============================================================
-# NEON POSTGRESQL CONNECTION
+# SESSION STATE INITIALIZATION (In-Memory Only)
 # ============================================================
-DATABASE_URL = "postgresql://neondb_owner:npg_rcv9u1okSKyi@ep-weathered-unit-b48cjlbm-pooler.c-6.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
-
-conn = st.connection("neon_db", type="sql", url=DATABASE_URL)
-
-try:
-    with conn.engine.connect() as session:
-        session.execute(text("""
-            CREATE TABLE IF NOT EXISTS user_study_sessions (
-                user_id TEXT NOT NULL,
-                subject TEXT NOT NULL,
-                exam_date DATE NOT NULL,
-                hardest_topics TEXT,
-                medium_topics TEXT,
-                easy_topics TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                PRIMARY KEY (user_id, subject)
-            );
-        """))
-        session.commit()
-except Exception as e:
-    st.error(f"Database initialization error: {e}")
+if "exams" not in st.session_state:
+    st.session_state.exams = {}
 
 # ============================================================
-# DATABASE HELPER FUNCTIONS
+# CALENDAR IMAGE GENERATOR FUNCTION
 # ============================================================
-def load_user_exams(user_id):
-    try:
-        df = conn.query(
-            "SELECT subject, exam_date, hardest_topics, medium_topics, easy_topics FROM user_study_sessions WHERE user_id = :u_id ORDER BY exam_date ASC;",
-            params={"u_id": user_id},
-            ttl="0s"
-        )
-        
-        exams_dict = {}
-        for row in df.to_dict(orient="records"):
-            exam_dt = row["exam_date"]
-            if isinstance(exam_dt, str):
-                exam_dt = datetime.strptime(exam_dt, "%Y-%m-%d").date()
-            elif isinstance(exam_dt, pd.Timestamp):
-                exam_dt = exam_dt.date()
+def generate_calendar_image(exams_dict):
+    """Generates a visual calendar image containing all study dates and exam days."""
+    if not exams_dict:
+        return None
 
-            exams_dict[row["subject"]] = {
-                "Exam Date": exam_dt,
-                "Revision Date": exam_dt - timedelta(days=1),
-                "Paper Date 1": exam_dt - timedelta(days=3),
-                "Paper Date 2": exam_dt - timedelta(days=5),
-                "Easy Study Date": exam_dt - timedelta(days=7),
-                "Medium Study Date": exam_dt - timedelta(days=9),
-                "Hard Study Date": exam_dt - timedelta(days=11),
-                "Hardest Topics": row["hardest_topics"] or "",
-                "Medium Topics": row["medium_topics"] or "",
-                "Easy Topics": row["easy_topics"] or ""
-            }
-        return exams_dict
-    except Exception as e:
-        st.error(f"Error loading exams: {e}")
-        return {}
+    # Collect all key dates across all exams
+    event_map = {}  # date -> list of strings
+    
+    colors = {
+        "Exam": "#ef4444",         # Red
+        "Light Revision": "#f59e0b",# Amber
+        "Past Paper": "#3b82f6",    # Blue
+        "Easy Topics": "#10b981",   # Green
+        "Medium Topics": "#8b5cf6", # Purple
+        "Hard Topics": "#ec4899"    # Pink
+    }
 
-def save_user_exam(user_id, subject_name, exam_info):
-    try:
-        with conn.engine.connect() as session:
-            session.execute(
-                text("""
-                    INSERT INTO user_study_sessions (user_id, subject, exam_date, hardest_topics, medium_topics, easy_topics)
-                    VALUES (:user_id, :subject, :exam_date, :hard, :medium, :easy)
-                    ON CONFLICT (user_id, subject) DO UPDATE SET
-                        exam_date = EXCLUDED.exam_date,
-                        hardest_topics = EXCLUDED.hardest_topics,
-                        medium_topics = EXCLUDED.medium_topics,
-                        easy_topics = EXCLUDED.easy_topics;
-                """),
-                {
-                    "user_id": user_id,
-                    "subject": subject_name,
-                    "exam_date": str(exam_info["Exam Date"]),
-                    "hard": exam_info["Hardest Topics"],
-                    "medium": exam_info["Medium Topics"],
-                    "easy": exam_info["Easy Topics"]
-                }
-            )
-            session.commit()
-    except Exception as e:
-        st.error(f"Error saving to database: {e}")
+    all_dates = []
+    for subject, info in exams_dict.items():
+        exam_dt = info["Exam Date"]
+        all_dates.append(exam_dt)
 
-def delete_user_exam(user_id, subject_name):
-    try:
-        with conn.engine.connect() as session:
-            session.execute(
-                text("DELETE FROM user_study_sessions WHERE user_id = :user_id AND subject = :subject;"),
-                {"user_id": user_id, "subject": subject_name}
-            )
-            session.commit()
-    except Exception as e:
-        st.error(f"Error deleting exam: {e}")
+        schedule = [
+            (exam_dt, f"🔥 EXAM: {subject}", colors["Exam"]),
+            (exam_dt - timedelta(days=1), f"🔄 Light Rev: {subject}", colors["Light Revision"]),
+            (exam_dt - timedelta(days=3), f"📝 Paper 1: {subject}", colors["Past Paper"]),
+            (exam_dt - timedelta(days=5), f"📝 Paper 2: {subject}", colors["Past Paper"]),
+            (exam_dt - timedelta(days=7), f"📘 Easy: {subject}", colors["Easy Topics"]),
+            (exam_dt - timedelta(days=9), f"📖 Med: {subject}", colors["Medium Topics"]),
+            (exam_dt - timedelta(days=11), f"🧠 Hard: {subject}", colors["Hard Topics"])
+        ]
 
-# ============================================================
-# USER SELECTION / AUTHENTICATION
-# ============================================================
-st.sidebar.title("👤 User Login")
-user_name = st.sidebar.text_input("Enter Student ID / Name:", value="Student 1")
+        for d, label, col in schedule:
+            all_dates.append(d)
+            if d not in event_map:
+                event_map[d] = []
+            event_map[d].append((label, col))
 
-if not user_name.strip():
-    st.warning("Please enter your Student ID or Name in the sidebar to view your study schedule.")
-    st.stop()
+    min_date = min(all_dates)
+    max_date = max(all_dates)
 
-current_user = user_name.strip().lower()
+    # Determine unique months to plot
+    months_to_plot = []
+    curr = min_date.replace(day=1)
+    end_month = max_date.replace(day=1)
+    while curr <= end_month:
+        months_to_plot.append((curr.year, curr.month))
+        # Advance to next month
+        if curr.month == 12:
+            curr = date(curr.year + 1, 1, 1)
+        else:
+            curr = date(curr.year, curr.month + 1, 1)
 
-# Load exams for active student from Neon DB
-exams = load_user_exams(current_user)
+    # Setup matplotlib plot grid
+    n_months = len(months_to_plot)
+    fig, axes = plt.subplots(n_months, 1, figsize=(14, 6 * n_months), facecolor="#0f172a")
+    if n_months == 1:
+        axes = [axes]
+
+    day_names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+
+    for idx, (yr, mo) in enumerate(months_to_plot):
+        ax = axes[idx]
+        ax.set_facecolor("#1e293b")
+        ax.axis("off")
+
+        # Title of Month
+        month_name = date(yr, mo, 1).strftime("%B %Y")
+        ax.text(3.5, 6.5, month_name, fontsize=18, fontweight="bold", color="#f8fafc", ha="center", va="center")
+
+        # Header Days
+        for col, day_name in enumerate(day_names):
+            ax.text(col + 0.5, 5.7, day_name, fontsize=12, fontweight="bold", color="#94a3b8", ha="center", va="center")
+
+        # Draw Grid & Days
+        cal = calendar.monthcalendar(yr, mo)
+        for row_idx, week in enumerate(cal):
+            for col_idx, day in enumerate(week):
+                x = col_idx
+                y = 5 - row_idx - 0.2
+
+                if day != 0:
+                    curr_date = date(yr, mo, day)
+                    is_today = (curr_date == date.today())
+                    
+                    # Cell border
+                    border_col = "#38bdf8" if is_today else "#334155"
+                    bg_col = "#0f172a" if is_today else "#1e293b"
+
+                    rect = patches.Rectangle((x + 0.05, y - 0.75), 0.9, 0.9, linewidth=1.5,
+                                             edgecolor=border_col, facecolor=bg_col, rx=0.08)
+                    ax.add_patch(rect)
+
+                    # Day Number
+                    num_col = "#38bdf8" if is_today else "#f8fafc"
+                    ax.text(x + 0.12, y + 0.05, str(day), fontsize=10, fontweight="bold", color=num_col)
+
+                    # Events on this day
+                    if curr_date in event_map:
+                        events = event_map[curr_date]
+                        for e_idx, (lbl, c_code) in enumerate(events[:3]): # Max 3 per box
+                            e_y = y - 0.22 - (e_idx * 0.2)
+                            tag_rect = patches.Rectangle((x + 0.08, e_y - 0.08), 0.84, 0.16,
+                                                         linewidth=0, facecolor=c_code, alpha=0.85, rx=0.04)
+                            ax.add_patch(tag_rect)
+                            ax.text(x + 0.5, e_y, lbl[:16], fontsize=6.5, color="#ffffff",
+                                    fontweight="bold", ha="center", va="center")
+
+        ax.set_xlim(0, 7)
+        ax.set_ylim(-0.5, 7)
+
+    plt.tight_layout()
+    return fig
 
 # ============================================================
 # HEADER
 # ============================================================
-st.markdown('<div class="main-title">📚 Study Sensi</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">📅 Revision Schedule Visualizer</div>', unsafe_allow_html=True)
 st.markdown(
-    f'<div class="subtitle">'
-    f'Active Profile: <strong>{user_name.strip()}</strong> | 1–3–5–7–9–11 day revision schedule.'
-    f'</div>',
+    '<div class="subtitle">'
+    'Input your exams to generate a revision calendar picture. (No data is saved online or locally)'
+    '</div>',
     unsafe_allow_html=True
 )
 
 # ============================================================
-# SIDEBAR — ADD EXAM
+# SIDEBAR — INPUT EXAMS
 # ============================================================
 with st.sidebar:
     st.header("➕ Add Exam")
-    st.write("Enter exam details to generate your schedule.")
+    st.write("Enter exam details below:")
 
     with st.form("exam_form"):
         exam_name = st.text_input("Subject", placeholder="e.g. Mathematics")
         exam_date_val = st.date_input("Exam date", value=date.today() + timedelta(days=14))
 
-        st.subheader("📖 Topics")
-        hardest_topics = st.text_input("Hardest topics", placeholder="e.g. Trigonometry, Algebra")
-        medium_topics = st.text_input("Medium topics", placeholder="e.g. Functions, Graphs")
-        easy_topics = st.text_input("Easy topics", placeholder="e.g. Statistics, Probability")
+        st.subheader("📖 Topics (Optional)")
+        hardest_topics = st.text_input("Hardest topics", placeholder="e.g. Algebra")
+        medium_topics = st.text_input("Medium topics", placeholder="e.g. Graphs")
+        easy_topics = st.text_input("Easy topics", placeholder="e.g. Statistics")
 
-        save_exam = st.form_submit_button("💾 Save Exam", use_container_width=True)
+        add_exam = st.form_submit_button("➕ Add to Schedule", use_container_width=True)
 
-if save_exam:
-    if not exam_name.strip():
-        st.error("Please enter a subject name.")
-    else:
-        subject_key = exam_name.strip()
-        exam_data = {
-            "Exam Date": exam_date_val,
-            "Revision Date": exam_date_val - timedelta(days=1),
-            "Paper Date 1": exam_date_val - timedelta(days=3),
-            "Paper Date 2": exam_date_val - timedelta(days=5),
-            "Easy Study Date": exam_date_val - timedelta(days=7),
-            "Medium Study Date": exam_date_val - timedelta(days=9),
-            "Hard Study Date": exam_date_val - timedelta(days=11),
-            "Hardest Topics": hardest_topics,
-            "Medium Topics": medium_topics,
-            "Easy Topics": easy_topics
-        }
-        save_user_exam(current_user, subject_key, exam_data)
-        st.success(f"{subject_key} saved for {user_name.strip()}!")
-        st.rerun()
+    if add_exam:
+        if not exam_name.strip():
+            st.error("Please enter a subject name.")
+        else:
+            subject_key = exam_name.strip()
+            st.session_state.exams[subject_key] = {
+                "Exam Date": exam_date_val,
+                "Hardest Topics": hardest_topics,
+                "Medium Topics": medium_topics,
+                "Easy Topics": easy_topics
+            }
+            st.success(f"Added {subject_key}!")
+            st.rerun()
+
+    if st.session_state.exams:
+        if st.button("🗑️ Clear All Exams", use_container_width=True):
+            st.session_state.exams = {}
+            st.rerun()
 
 # ============================================================
-# DASHBOARD STATISTICS
+# MAIN CONTENT — CALENDAR IMAGE GENERATOR
 # ============================================================
-st.subheader("📊 Your Study Dashboard")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.metric("Exams", len(exams))
-
-with col2:
-    upcoming = sum(1 for exam in exams.values() if exam.get("Exam Date") and exam["Exam Date"] >= date.today())
-    st.metric("Upcoming Exams", upcoming)
-
-with col3:
-    total_tasks = len(exams) * 6
-    st.metric("Study Sessions", total_tasks)
-
-# ============================================================
-# EXAMS LIST
-# ============================================================
-st.subheader("📝 Your Exams")
-
-if not exams:
-    st.info("No exams added yet for this student ID. Use the sidebar on the left to add your first exam.")
+if not st.session_state.exams:
+    st.info("👈 Add your exams using the sidebar on the left to create your visual calendar image.")
 else:
-    exam_to_delete = None
+    st.subheader("🖼️ Generated Revision Calendar")
 
-    for exam_name, exam_info in exams.items():
-        exam_dt = exam_info["Exam Date"]
-        days_until_exam = (exam_dt - date.today()).days
+    with st.spinner("Generating calendar image..."):
+        fig = generate_calendar_image(st.session_state.exams)
+        if fig:
+            st.pyplot(fig)
 
-        with st.expander(f"📚 {exam_name} — {exam_dt.strftime('%d %B %Y')}", expanded=False):
-            if days_until_exam > 0:
-                st.info(f"⏳ {days_until_exam} days until this exam")
-            elif days_until_exam == 0:
-                st.warning("🔥 The exam is today!")
-            else:
-                st.write(f"This exam was {abs(days_until_exam)} days ago.")
-
-            st.markdown("### 📅 Revision Schedule")
-
-            schedule = [
-                (exam_info["Hard Study Date"], "11 DAYS BEFORE", "🧠 Study hardest topics", exam_info["Hardest Topics"]),
-                (exam_info["Medium Study Date"], "9 DAYS BEFORE", "📖 Study medium topics", exam_info["Medium Topics"]),
-                (exam_info["Easy Study Date"], "7 DAYS BEFORE", "📘 Study easy topics", exam_info["Easy Topics"]),
-                (exam_info["Paper Date 2"], "5 DAYS BEFORE", "📝 Do mixed past papers", ""),
-                (exam_info["Paper Date 1"], "3 DAYS BEFORE", "📝 Do mixed past papers", ""),
-                (exam_info["Revision Date"], "1 DAY BEFORE", "🔄 Light revision of all content", "Revise all content")
-            ]
-
-            for study_date, timing, task, topics in schedule:
-                with st.container(border=True):
-                    st.caption(timing)
-                    st.write(f"**{study_date.strftime('%A, %d %B %Y')}**")
-                    st.write(task)
-                    if topics:
-                        st.write(f"📚 **Topics:** {topics}")
-
-            if st.button(f"🗑️ Delete {exam_name}", key=f"delete_{exam_name}"):
-                exam_to_delete = exam
+    # Detailed List View below image
+    st.markdown("---")
+    st.subheader("📝 Scheduled Exams Summary")
+    
+    for subject, info in st.session_state.exams.items():
+        exam_dt = info["Exam Date"]
+        with st.expander(f"📚 {subject} — {exam_dt.strftime('%d %B %Y')}"):
+            st.write(f"• **Hard Study Date (11 Days Before):** {(exam_dt - timedelta(days=11)).strftime('%A, %d %B %Y')}")
+            st.write(f"• **Medium Study Date (9 Days Before):** {(exam_dt - timedelta(days=9)).strftime('%A, %d %B %Y')}")
+            st.write(f"• **Easy Study Date (7 Days Before):** {(exam_dt - timedelta(days=7)).strftime('%A, %d %B %Y')}")
+            st.write(f"• **Past Paper 2 (5 Days Before):** {(exam_dt - timedelta(days=5)).strftime('%A, %d %B %Y')}")
+            st.write(f"• **Past Paper 1 (3 Days Before):** {(exam_dt - timedelta(days=3)).strftime('%A, %d %B %Y')}")
+            st.write(f"• **Light Revision (1 Day Before):** {(exam_dt - timedelta(days=1)).strftime('%A, %d %B %Y')}")
