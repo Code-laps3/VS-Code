@@ -47,34 +47,29 @@ with conn.session as session:
 # ============================================================
 # DATABASE HELPER FUNCTIONS
 # ============================================================
-def load_exams():
+def save_exams():
     try:
-        df = conn.query("SELECT subject, exam_date, hardest_topics, medium_topics, easy_topics FROM study_sessions ORDER BY exam_date ASC;", ttl="0s")
+        # Clear existing records
+        conn.session.execute(text("DELETE FROM study_sessions;"))
         
-        exams_dict = {}
-        for row in df.to_dict(orient="records"):
-            # Ensure exam_date is a datetime.date object
-            exam_dt = row["exam_date"]
-            if isinstance(exam_dt, str):
-                exam_dt = datetime.strptime(exam_dt, "%Y-%m-%d").date()
-
-            # Dynamically calculate schedule dates
-            exams_dict[row["subject"]] = {
-                "Exam Date": exam_dt,
-                "Revision Date": exam_dt - timedelta(days=1),
-                "Paper Date 1": exam_dt - timedelta(days=3),
-                "Paper Date 2": exam_dt - timedelta(days=5),
-                "Easy Study Date": exam_dt - timedelta(days=7),
-                "Medium Study Date": exam_dt - timedelta(days=9),
-                "Hard Study Date": exam_dt - timedelta(days=11),
-                "Hardest Topics": row["hardest_topics"] or "",
-                "Medium Topics": row["medium_topics"] or "",
-                "Easy Topics": row["easy_topics"] or ""
-            }
-        return exams_dict
+        # Re-insert current exams
+        for subject_name, exam in st.session_state.exams.items():
+            conn.session.execute(
+                text("""
+                    INSERT INTO study_sessions (subject, exam_date, hardest_topics, medium_topics, easy_topics)
+                    VALUES (:subject, :exam_date, :hard, :medium, :easy);
+                """),
+                {
+                    "subject": subject_name,
+                    "exam_date": exam["Exam Date"],
+                    "hard": exam["Hardest Topics"],
+                    "medium": exam["Medium Topics"],
+                    "easy": exam["Easy Topics"]
+                }
+            )
+        conn.session.commit()
     except Exception as e:
-        st.error(f"Error loading exams: {e}")
-        return {}
+        st.error(f"Error saving to database: {e}")
 
 def save_exams():
     try:
