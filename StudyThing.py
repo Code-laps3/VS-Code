@@ -1,49 +1,6 @@
 import json
-import os
 from datetime import date, timedelta
 import streamlit as st
-
-EXAMS_FILE = "exams.json"
-
-
-def save_exams():
-    """Save all exams permanently to a JSON file."""
-    data = {}
-    for exam_name, exam_info in st.session_state.exams.items():
-        data[exam_name] = {
-            key: value.isoformat() if isinstance(value, date) else value
-            for key, value in exam_info.items()
-        }
-
-    with open(EXAMS_FILE, "w") as file:
-        json.dump(data, file, indent=4)
-
-
-def load_exams():
-    """Load saved exams from the JSON file."""
-    if not os.path.exists(EXAMS_FILE):
-        return {}
-
-    with open(EXAMS_FILE, "r") as file:
-        data = json.load(file)
-
-    date_keys = [
-        "Exam Date",
-        "Revision Date",
-        "Paper Date 1",
-        "Paper Date 2",
-        "Easy Study Date",
-        "Medium Study Date",
-        "Hard Study Date",
-    ]
-
-    for exam_info in data.values():
-        for key in date_keys:
-            if key in exam_info:
-                exam_info[key] = date.fromisoformat(exam_info[key])
-
-    return data
-
 
 # ============================================================
 # PAGE CONFIG
@@ -113,10 +70,10 @@ st.markdown(
 
 
 # ============================================================
-# SESSION STATE
+# SESSION STATE INITIALIZATION
 # ============================================================
 if "exams" not in st.session_state:
-    st.session_state.exams = load_exams()
+    st.session_state.exams = {}
 
 # ============================================================
 # HEADER
@@ -135,10 +92,63 @@ st.markdown(
 
 
 # ============================================================
-# SIDEBAR — ADD EXAM
+# SIDEBAR — DATA IMPORT/EXPORT & ADD EXAM
 # ============================================================
 
 with st.sidebar:
+    st.header("📂 Backup & Restore")
+
+    # Upload JSON File to load session
+    uploaded_file = st.file_uploader(
+        "Load schedule JSON file", type=["json"], help="Upload a previously exported schedule."
+    )
+
+    if uploaded_file is not None:
+        try:
+            imported_data = json.load(uploaded_file)
+            date_keys = [
+                "Exam Date",
+                "Revision Date",
+                "Paper Date 1",
+                "Paper Date 2",
+                "Easy Study Date",
+                "Medium Study Date",
+                "Hard Study Date",
+            ]
+            
+            # Convert loaded date strings into date objects
+            for exam_info in imported_data.values():
+                for key in date_keys:
+                    if key in exam_info and isinstance(exam_info[key], str):
+                        exam_info[key] = date.fromisoformat(exam_info[key])
+
+            st.session_state.exams.update(imported_data)
+            st.success("Schedules loaded successfully!")
+        except Exception as e:
+            st.error(f"Error loading JSON file: {e}")
+
+    # Export all session exams as single JSON file
+    if st.session_state.exams:
+        all_exams_json = json.dumps(
+            {
+                exam_name: {
+                    k: v.isoformat() if isinstance(v, date) else v
+                    for k, v in exam_info.items()
+                }
+                for exam_name, exam_info in st.session_state.exams.items()
+            },
+            indent=4,
+        )
+        st.download_button(
+            label="💾 Download All Data (.json)",
+            data=all_exams_json,
+            file_name="study_schedule_backup.json",
+            mime="application/json",
+            use_container_width=True,
+        )
+
+    st.divider()
+
     st.header("➕ Add Exam")
     st.write(
         "Enter your exam details and Study Sensi will build your revision schedule."
@@ -162,12 +172,12 @@ with st.sidebar:
         )
 
         save_exam = st.form_submit_button(
-            "💾 Save Exam", use_container_width=True
+            "➕ Add to Schedule", use_container_width=True
         )
 
 
 # ============================================================
-# SAVE EXAM
+# SAVE EXAM TO SESSION STATE
 # ============================================================
 
 if save_exam:
@@ -193,7 +203,6 @@ if save_exam:
             "Medium Topics": medium_topics,
             "Easy Topics": easy_topics,
         }
-        save_exams()
         st.success(f"{exam_name} has been added!")
 
 
@@ -222,14 +231,14 @@ with col3:
 
 
 # ============================================================
-# EXAMS & DOWNLOAD SECTION
+# EXAMS
 # ============================================================
 
 st.subheader("📝 Your Exams")
 
 if not st.session_state.exams:
     st.info(
-        "You don't have any exams yet. Use the panel on the left to add your first exam."
+        "You don't have any exams yet. Use the panel on the left to add your first exam or load a backup JSON file."
     )
 else:
     exam_to_delete = None
@@ -299,19 +308,16 @@ else:
 
             st.divider()
 
-            # --- COPY/PASTE & FILE DOWNLOAD OPTIONS ---
-            st.markdown("### 📋 Copy & Download Data")
+            # --- EASY COPY/PASTE TEXT SECTION ---
+            st.markdown("### 📋 Copy Schedule Data")
 
-            # 1. Plain Text Copy Option
             text_lines = [
                 f"Subject: {exam_name}",
                 f"Exam Date: {exam_date.strftime('%Y-%m-%d')}",
                 "Schedule:",
             ]
             for s_date, timing, task, topics in schedule:
-                line = (
-                    f" - {s_date.strftime('%Y-%m-%d')} ({timing}): {task}"
-                )
+                line = f" - {s_date.strftime('%Y-%m-%d')} ({timing}): {task}"
                 if topics:
                     line += f" | Topics: {topics}"
                 text_lines.append(line)
@@ -320,36 +326,10 @@ else:
             st.caption("Hover over the box below and click the copy icon:")
             st.code(plain_text_export, language="text")
 
-            # 2. JSON File Download Button
-            subject_json_data = json.dumps(
-                {
-                    exam_name: {
-                        k: v.isoformat() if isinstance(v, date) else v
-                        for k, v in exam_info.items()
-                    }
-                },
-                indent=4,
-            )
-
-            col_dl, col_del = st.columns([1, 1])
-
-            with col_dl:
-                st.download_button(
-                    label=f"📥 Download {exam_name} Data (JSON)",
-                    data=subject_json_data,
-                    file_name=f"{exam_name.lower().replace(' ', '_')}_schedule.json",
-                    mime="application/json",
-                    use_container_width=True,
-                )
-
-            with col_del:
-                if st.button(
-                    f"🗑️ Delete {exam_name}", key=f"delete_{exam_name}"
-                ):
-                    exam_to_delete = exam_name
+            if st.button(f"🗑️ Delete {exam_name}", key=f"delete_{exam_name}"):
+                exam_to_delete = exam_name
 
     # DELETE AFTER LOOP
     if exam_to_delete is not None:
         del st.session_state.exams[exam_to_delete]
-        save_exams()
         st.rerun()
