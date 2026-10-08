@@ -40,3 +40,6 @@ st.title(f"❤️:violet[{round_date} years, {display_month} months and]",
          text_alignment="center")
 st.title(f":violet[{display_day} days]❤️", text_alignment="center")
 st.subheader("since we started dating", text_alignment="center")
+
+
+st.header(f"Photo Gallery Of My Favorite Pictures of You" text_alignment="center")
