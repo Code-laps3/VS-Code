@@ -2,7 +2,7 @@ from datetime import date
 import streamlit as st
 
 #Page Config
-st.set_page_config(page_title="❤️Our Corner Of The Internet❤️", page_icon="❤️", layout="wide")
+st.set_page_config(page_title="❤️Our Corner Of The Internet❤️", page_icon="💕", layout="wide")
 
 # Find current date.
 month = date.today().month
