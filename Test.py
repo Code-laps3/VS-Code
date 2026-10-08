@@ -57,4 +57,8 @@ if st.button("Click Here To See The Pictures"):
     PicNum = random.randint(1, 2)
     if PicNum == 1:
         st.subheader("Tongue Touch Tweaker")
-        st.image("IMG_1556.JPEG", caption="So I love this picture of you because it super cute in my eyes. It was right after my tongue touched yours while we kissed and seeing you act like this is just super cute to me.", width=400)
+        st.image("Images/IMG_1556.JPEG", caption="So I love this picture of you because it super cute in my eyes. It was right after my tongue touched yours while we kissed and seeing you act like this is just super cute to me.", width=400)
+
+    if PicNum == 2:
+        st.subheader("A Proposing Princess")
+        st.image("Images/IMG_1559.JPEG", caption="I love how silly you look in this one, its just shows how much of a weird girl you are and I love that weriddness..", width=400)
