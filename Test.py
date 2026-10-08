@@ -1,11 +1,11 @@
 from datetime import date
 import streamlit as st
 import math
-
+import random
 
 # Page Config
 st.set_page_config(page_title="❤️Our Corner Of The Internet❤️",
-                   page_icon="💕", layout="wide")
+                   page_icon="💕", layout="centered")
 
 # Find current date.
 month = date.today().month
@@ -52,3 +52,9 @@ st.subheader("since we started dating", text_alignment="center")
 
 st.header("❤️Photo Gallery Of My Favorite Pictures of You❤️",
           text_alignment="center")
+
+if st.button("Click Here To See The Pictures"):
+    PicNum = random.randint(1, 2)
+    if PicNum == 1:
+        st.subheader("Tongue Touch Tweaker")
+        st.image("IMG_1556.JPEG", caption="So I love this picture of you because it super cute in my eyes. It was right after my tongue touched yours while we kissed and seeing you act like this is just super cute to me.", width=400)
