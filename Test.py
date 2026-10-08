@@ -2,6 +2,7 @@ from datetime import date
 import streamlit as st
 import math
 
+
 # Page Config
 st.set_page_config(page_title="❤️Our Corner Of The Internet❤️",
                    page_icon="💕", layout="wide")
@@ -15,7 +16,9 @@ past_date = date(2026, 4, 4)
 
 # Get value for years
 calc_year = (days - past_date).days
+
 round_date = math.floor(calc_year/365.25)
+
 
 # Get month value
 month_elapse = (month+(12*round_date)) - 4
@@ -45,6 +48,7 @@ st.title(f"❤️:violet[{round_date} years, {display_month} months and]",
          text_alignment="center")
 st.title(f":violet[{display_day} days]❤️", text_alignment="center")
 st.subheader("since we started dating", text_alignment="center")
+
 
 st.header("❤️Photo Gallery Of My Favorite Pictures of You❤️",
           text_alignment="center")

@@ -96,58 +96,6 @@ st.markdown(
 # ============================================================
 
 with st.sidebar:
-    st.header("📂 Backup & Restore")
-
-    # Upload JSON File to load session
-    uploaded_file = st.file_uploader(
-        "Load schedule JSON file", type=["json"], help="Upload a previously exported schedule."
-    )
-
-    if uploaded_file is not None:
-        try:
-            imported_data = json.load(uploaded_file)
-            date_keys = [
-                "Exam Date",
-                "Revision Date",
-                "Paper Date 1",
-                "Paper Date 2",
-                "Easy Study Date",
-                "Medium Study Date",
-                "Hard Study Date",
-            ]
-
-            # Convert loaded date strings into date objects
-            for exam_info in imported_data.values():
-                for key in date_keys:
-                    if key in exam_info and isinstance(exam_info[key], str):
-                        exam_info[key] = date.fromisoformat(exam_info[key])
-
-            st.session_state.exams.update(imported_data)
-            st.success("Schedules loaded successfully!")
-        except Exception as e:
-            st.error(f"Error loading JSON file: {e}")
-
-    # Export all session exams as single JSON file
-    if st.session_state.exams:
-        all_exams_json = json.dumps(
-            {
-                exam_name: {
-                    k: v.isoformat() if isinstance(v, date) else v
-                    for k, v in exam_info.items()
-                }
-                for exam_name, exam_info in st.session_state.exams.items()
-            },
-            indent=4,
-        )
-        st.download_button(
-            label="💾 Download All Data (.json)",
-            data=all_exams_json,
-            file_name="study_schedule_backup.json",
-            mime="application/json",
-            use_container_width=True,
-        )
-
-    st.divider()
 
     st.header("➕ Add Exam")
     st.write(
@@ -304,51 +252,18 @@ else:
                     st.write(f"**{study_date.strftime('%A, %d %B %Y')}**")
                     st.write(task)
                     if topics:
-                        st.write(f"📚 **Topics:** {topics}")
+                        st.write(
+                            f"📚 **Topics:** {topics}"
+                        )
 
-            st.divider()
+            # ------------------------------------------------
+            # DELETE
+            # ------------------------------------------------
 
-            # --- EASY COPY/PASTE TEXT SECTION ---
-            st.markdown("### 📋 Copy Schedule Data")
-
-            text_lines = [
-                f"Subject: {exam_name}",
-                f"Exam Date: {exam_date.strftime('%Y-%m-%d')}",
-                "Schedule:",
-            ]
-            for s_date, timing, task, topics in schedule:
-                line = f" - {s_date.strftime('%Y-%m-%d')} ({timing}): {task}"
-                if topics:
-                    line += f" | Topics: {topics}"
-                text_lines.append(line)
-            plain_text_export = "\n".join(text_lines)
-
-            st.caption("Hover over the box below and click the copy icon:")
-            st.code(plain_text_export, language="text")
-
-            # 2. JSON File Download Button
-            subject_json_data = json.dumps(
-                {
-                    exam_name: {
-                        k: v.isoformat() if isinstance(v, date) else v
-                        for k, v in exam_info.items()
-                    }
-                },
-                indent=4,
-            )
-
-            col_dl, col_del = st.columns([1, 1])
-
-            with col_dl:
-                st.download_button(
-                    label=f"📥 Download {exam_name} Data (JSON)",
-                    data=subject_json_data,
-                    file_name=f"{exam_name.lower().replace(' ', '_')}_schedule.json",
-                    mime="application/json",
-                    use_container_width=True,
-                )
-
-            if st.button(f"🗑️ Delete {exam_name}", key=f"delete_{exam_name}"):
+            if st.button(
+                f"🗑️ Delete {exam_name}",
+                key=f"delete_{exam_name}"
+            ):
                 exam_to_delete = exam_name
 
     # DELETE AFTER LOOP
