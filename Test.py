@@ -42,4 +42,4 @@ st.title(f":violet[{display_day} days]❤️", text_alignment="center")
 st.subheader("since we started dating", text_alignment="center")
 
 
-st.header("❤️Photo Gallery Of My Favorite Pictures of You❤️" text_alignment="center")
+st.header("❤️Photo Gallery Of My Favorite Pictures of You❤️", text_alignment="center")
