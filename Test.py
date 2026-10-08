@@ -13,7 +13,7 @@ past_date = date(2026, 4, 4)
 
 # Get value for years
 calc_year = (days - past_date).days
-round_date = round(calc_year/365.25)
+round_date = int(round(calc_year/365.25))
 
 # Get month value
 month_elapse = (month+(12*round_date)) - 4
