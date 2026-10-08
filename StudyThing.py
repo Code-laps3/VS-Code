@@ -326,6 +326,28 @@ else:
             st.caption("Hover over the box below and click the copy icon:")
             st.code(plain_text_export, language="text")
 
+                  # 2. JSON File Download Button
+            subject_json_data = json.dumps(
+                {
+                    exam_name: {
+                        k: v.isoformat() if isinstance(v, date) else v
+                        for k, v in exam_info.items()
+                    }
+                },
+                indent=4,
+            )
+
+            col_dl, col_del = st.columns([1, 1])
+
+            with col_dl:
+                st.download_button(
+                    label=f"📥 Download {exam_name} Data (JSON)",
+                    data=subject_json_data,
+                    file_name=f"{exam_name.lower().replace(' ', '_')}_schedule.json",
+                    mime="application/json",
+                    use_container_width=True,
+                )
+
             if st.button(f"🗑️ Delete {exam_name}", key=f"delete_{exam_name}"):
                 exam_to_delete = exam_name
 
