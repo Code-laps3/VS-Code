@@ -307,7 +307,7 @@ if st.session_state.exams:
             "Easy Topics": [
                 info["Easy Study Date"].strftime("%d %b")
                 for info in st.session_state.exams.values()
-            ],
+            
             ],
             "Final Revision": [
                 info["Revision Date"].strftime("%d %b")
