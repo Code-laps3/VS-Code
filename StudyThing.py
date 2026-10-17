@@ -1,5 +1,6 @@
-import json
 from datetime import date, timedelta
+import json
+import pandas as pd
 import streamlit as st
 
 # ============================================================
@@ -92,7 +93,7 @@ st.markdown(
 
 
 # ============================================================
-# SIDEBAR — DATA IMPORT/EXPORT & ADD EXAM
+# SIDEBAR — DATA IMPORT/EXPORT, ADD EXAM, & EDIT EXAM
 # ============================================================
 
 with st.sidebar:
@@ -100,7 +101,9 @@ with st.sidebar:
 
     # Upload JSON File to load session
     uploaded_file = st.file_uploader(
-        "Load schedule JSON file", type=["json"], help="Upload a previously exported schedule."
+        "Load schedule JSON file",
+        type=["json"],
+        help="Upload a previously exported schedule.",
     )
 
     if uploaded_file is not None:
@@ -175,6 +178,64 @@ with st.sidebar:
             "➕ Add to Schedule", use_container_width=True
         )
 
+    # ============================================================
+    # EDIT EXAM SECTION
+    # ============================================================
+    if st.session_state.exams:
+        st.divider()
+        st.header("✏️ Edit Exam")
+
+        change_exam = st.selectbox(
+            "Change Exam", options=list(st.session_state.exams.keys())
+        )
+
+        if change_exam:
+            what_to_change = st.selectbox(
+                "What do you want to change?",
+                options=list(st.session_state.exams[change_exam].keys()),
+            )
+
+            current_value = st.session_state.exams[change_exam][what_to_change]
+
+            # Use appropriate input element depending on whether it's a date or text
+            if isinstance(current_value, date):
+                new_value = st.date_input(
+                    f"Enter new value for {what_to_change}", value=current_value
+                )
+            else:
+                new_value = st.text_input(
+                    f"Enter new value for {what_to_change}",
+                    value=str(current_value),
+                )
+
+            if st.button("Update", use_container_width=True):
+                st.session_state.exams[change_exam][what_to_change] = new_value
+
+                # If Exam Date is updated, recalculate all dependent schedule dates automatically
+                if what_to_change == "Exam Date":
+                    new_exam_date = new_value
+                    st.session_state.exams[change_exam]["Revision Date"] = (
+                        new_exam_date - timedelta(days=1)
+                    )
+                    st.session_state.exams[change_exam]["Paper Date 1"] = (
+                        new_exam_date - timedelta(days=3)
+                    )
+                    st.session_state.exams[change_exam]["Paper Date 2"] = (
+                        new_exam_date - timedelta(days=5)
+                    )
+                    st.session_state.exams[change_exam]["Easy Study Date"] = (
+                        new_exam_date - timedelta(days=7)
+                    )
+                    st.session_state.exams[change_exam]["Medium Study Date"] = (
+                        new_exam_date - timedelta(days=9)
+                    )
+                    st.session_state.exams[change_exam]["Hard Study Date"] = (
+                        new_exam_date - timedelta(days=11)
+                    )
+
+                st.success(f"Updated {what_to_change} for {change_exam}!")
+                st.rerun()
+
 
 # ============================================================
 # SAVE EXAM TO SESSION STATE
@@ -204,10 +265,11 @@ if save_exam:
             "Easy Topics": easy_topics,
         }
         st.success(f"{exam_name} has been added!")
+        st.rerun()
 
 
 # ============================================================
-# DASHBOARD STATISTICS
+# DASHBOARD STATISTICS & OVERVIEW TABLE
 # ============================================================
 
 st.subheader("📊 Your Study Dashboard")
@@ -228,6 +290,44 @@ with col2:
 with col3:
     total_tasks = len(st.session_state.exams) * 6
     st.metric("Study Sessions", total_tasks)
+
+# Display schedule overview table if exams exist
+if st.session_state.exams:
+    st.markdown("### 🗓️ Schedule Overview Table")
+    confusion_matrix = pd.DataFrame(
+        {
+            "Exam Date": [
+                info["Exam Date"].strftime("%d %b %Y")
+                for info in st.session_state.exams.values()
+            ],
+            "Hard Topics": [
+                info["Hard Study Date"].strftime("%d %b")
+                for info in st.session_state.exams.values()
+            ],
+            "Medium Topics": [
+                info["Medium Study Date"].strftime("%d %b")
+                for info in st.session_state.exams.values()
+            ],
+            "Easy Topics": [
+                info["Easy Study Date"].strftime("%d %b")
+                for info in st.session_state.exams.values()
+            ],
+            "Paper 2": [
+                info["Paper Date 2"].strftime("%d %b")
+                for info in st.session_state.exams.values()
+            ],
+            "Paper 1": [
+                info["Paper Date 1"].strftime("%d %b")
+                for info in st.session_state.exams.values()
+            ],
+            "Final Revision": [
+                info["Revision Date"].strftime("%d %b")
+                for info in st.session_state.exams.values()
+            ],
+        },
+        index=list(st.session_state.exams.keys()),
+    )
+    st.table(confusion_matrix)
 
 
 # ============================================================
@@ -317,13 +417,17 @@ else:
                 "Schedule:",
             ]
             for s_date, timing, task, topics in schedule:
-                line = f" - {s_date.strftime('%Y-%m-%d')} ({timing}): {task}"
+                line = (
+                    f" - {s_date.strftime('%Y-%m-%d')} ({timing}): {task}"
+                )
                 if topics:
                     line += f" | Topics: {topics}"
                 text_lines.append(line)
             plain_text_export = "\n".join(text_lines)
 
-            st.caption("Hover over the box below and click the copy icon:")
+            st.caption(
+                "Hover over the box below and click the copy icon:"
+            )
             st.code(plain_text_export, language="text")
 
             # 2. JSON File Download Button
