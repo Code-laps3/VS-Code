@@ -252,14 +252,8 @@ if st.session_state.exams:
             "Easy Topics": [
                 info["Easy Study Date"].strftime("%d %b")
                 for info in st.session_state.exams.values()
-            ],
-            "Paper 2": [
-                info["Paper Date 2"].strftime("%d %b")
-                for info in st.session_state.exams.values()
-            ],
-            "Paper 1": [
-                info["Paper Date 1"].strftime("%d %b")
-                for info in st.session_state.exams.values()
+         
+        
             ],
             "Final Revision": [
                 info["Revision Date"].strftime("%d %b")
