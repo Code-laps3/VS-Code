@@ -337,3 +337,125 @@ if st.session_state.exams:
 st.subheader("📝 Your Exams")
 
 if not st.session_state.exams:
+    st.info(
+        "You don't have any exams yet. Use the panel on the left to add your first exam or load a backup JSON file."
+    )
+else:
+    exam_to_delete = None
+
+    for exam_name, exam_info in st.session_state.exams.items():
+        exam_date = exam_info["Exam Date"]
+        days_until_exam = (exam_date - date.today()).days
+
+        schedule = [
+            (
+                exam_info["Hard Study Date"],
+                "11 DAYS BEFORE",
+                "🧠 Study hardest topics",
+                exam_info["Hardest Topics"],
+            ),
+            (
+                exam_info["Medium Study Date"],
+                "9 DAYS BEFORE",
+                "📖 Study medium topics",
+                exam_info["Medium Topics"],
+            ),
+            (
+                exam_info["Easy Study Date"],
+                "7 DAYS BEFORE",
+                "📘 Study easy topics",
+                exam_info["Easy Topics"],
+            ),
+            (
+                exam_info["Mixed Practice Date 2"],
+                "5 DAYS BEFORE",
+                "📝 Mixed Practice Paper 2",
+                "",
+            ),
+            (
+                exam_info["Mixed Practice Date 1"],
+                "3 DAYS BEFORE",
+                "📝 Mixed Practice Paper 1",
+                "",
+            ),
+            (
+                exam_info["Revision Date"],
+                "1 DAY BEFORE",
+                "🔄 Light revision of all content",
+                "Revise all content",
+            ),
+        ]
+
+        with st.expander(
+            f"📚 {exam_name} — {exam_date.strftime('%d %B %Y')}", expanded=False
+        ):
+            if days_until_exam > 0:
+                st.info(f"⏳ {days_until_exam} days until this exam")
+            elif days_until_exam == 0:
+                st.warning("🔥 The exam is today!")
+            else:
+                st.write(f"This exam was {abs(days_until_exam)} days ago.")
+
+            st.markdown("### 📅 Revision Schedule")
+
+            for study_date, timing, task, topics in schedule:
+                with st.container(border=True):
+                    st.caption(timing)
+                    st.write(f"**{study_date.strftime('%A, %d %B %Y')}**")
+                    st.write(task)
+                    if topics:
+                        st.write(f"📚 **Topics:** {topics}")
+
+            st.divider()
+
+            # --- EASY COPY/PASTE TEXT SECTION ---
+            st.markdown("### 📋 Copy Schedule Data")
+
+            text_lines = [
+                f"Subject: {exam_name}",
+                f"Exam Date: {exam_date.strftime('%Y-%m-%d')}",
+                "Schedule:",
+            ]
+            for s_date, timing, task, topics in schedule:
+                line = (
+                    f" - {s_date.strftime('%Y-%m-%d')} ({timing}): {task}"
+                )
+                if topics:
+                    line += f" | Topics: {topics}"
+                text_lines.append(line)
+            plain_text_export = "\n".join(text_lines)
+
+            st.caption(
+                "Hover over the box below and click the copy icon:"
+            )
+            st.code(plain_text_export, language="text")
+
+            # 2. JSON File Download Button
+            subject_json_data = json.dumps(
+                {
+                    exam_name: {
+                        k: v.isoformat() if isinstance(v, date) else v
+                        for k, v in exam_info.items()
+                    }
+                },
+                indent=4,
+            )
+
+            col_dl, col_del = st.columns([1, 1])
+
+            with col_dl:
+                st.download_button(
+                    label=f"📥 Download {exam_name} Data (JSON)",
+                    data=subject_json_data,
+                    file_name=f"{exam_name.lower().replace(' ', '_')}_schedule.json",
+                    mime="application/json",
+                    use_container_width=True,
+                )
+
+            if st.button(f"🗑️ Delete {exam_name}", key=f"delete_{exam_name}"):
+                exam_to_delete = exam_name
+
+    # DELETE AFTER LOOP
+    if exam_to_delete is not None:
+        del st.session_state.exams[exam_to_delete]
+        st.rerun()
