@@ -216,7 +216,7 @@ with st.sidebar:
                         new_exam_date - timedelta(days=1)
                     )
             
-                    )
+                    
                     st.session_state.exams[change_exam]["Easy Study Date"] = (
                         new_exam_date - timedelta(days=7)
                     )
