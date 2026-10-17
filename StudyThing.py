@@ -112,8 +112,6 @@ with st.sidebar:
             date_keys = [
                 "Exam Date",
                 "Revision Date",
-                "Paper Date 1",
-                "Paper Date 2",
                 "Easy Study Date",
                 "Medium Study Date",
                 "Hard Study Date",
@@ -255,8 +253,6 @@ if save_exam:
         st.session_state.exams[exam_name.strip()] = {
             "Exam Date": exam_date,
             "Revision Date": revision_date,
-            "Paper Date 1": paper_date_1,
-            "Paper Date 2": paper_date_2,
             "Easy Study Date": easy_date,
             "Medium Study Date": medium_date,
             "Hard Study Date": hard_date,
@@ -312,13 +308,6 @@ if st.session_state.exams:
                 info["Easy Study Date"].strftime("%d %b")
                 for info in st.session_state.exams.values()
             ],
-            "Paper 2": [
-                info["Paper Date 2"].strftime("%d %b")
-                for info in st.session_state.exams.values()
-            ],
-            "Paper 1": [
-                info["Paper Date 1"].strftime("%d %b")
-                for info in st.session_state.exams.values()
             ],
             "Final Revision": [
                 info["Revision Date"].strftime("%d %b")
