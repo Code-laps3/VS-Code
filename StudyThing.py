@@ -301,7 +301,7 @@ if st.session_state.exams:
                 for info in st.session_state.exams.values()
             ],
             "Hard Topics": [
-                info["Hard Study Date"].strftime("%d %b")
+                info["Hard Study Date"].strftime("%d %b") info["Hardest Topics"]
                 for info in st.session_state.exams.values()
             ],
             "Medium Topics": [
