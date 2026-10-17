@@ -329,33 +329,6 @@ if st.session_state.exams:
     )
     st.table(confusion_matrix)
 
-# Mapping table columns to dictionary keys
-    col_key_map = {
-        "Exam Date": "Exam Date",
-        "Hard Topics": "Hard Study Date",
-        "Medium Topics": "Medium Study Date",
-        "Easy Topics": "Easy Study Date",
-        "Paper 2": "Paper Date 2" ,
-        "Paper 1": "Paper Date 1",
-        "Final Revision": "Revision Date",
-    }
-
-
-    def highlight_matching_dates(df):
-        styles = pd.DataFrame("", index=df.index, columns=df.columns)
-        for exam_name, info in st.session_state.exams.items():
-            for col_label, dict_key in col_key_map.items():
-                if dict_key in info and info[dict_key] == highlight_date:
-                    styles.loc[exam_name, col_label] = (
-                        "background-color: #2563eb; color: white; font-weight: bold;"
-                    )
-        return styles
-
-
-    styled_table = confusion_matrix.style.apply(
-        highlight_matching_dates, axis=None
-    )
-    st.dataframe(styled_table, use_container_width=True)
 
 
 # ============================================================
